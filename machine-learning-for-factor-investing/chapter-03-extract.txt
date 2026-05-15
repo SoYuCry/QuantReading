@@ -1,0 +1,992 @@
+
+
+--- PDF PAGE 32 ---
+3
+Factor investing and asset pricing anomalies
+Asset pricing anomalies are the foundations of factor investing . In this chapter our aim
+is twofold:
+• present simple ideas and concepts: basic factor models and common empirical facts
+(time-varying nature of returns and risk premia);
+• provide the reader with lists of articles that go much deeper to stimulate and satisfy
+curiosity.
+The purpose of this chapter is not to provide a full treatment of the many topics related
+to factor investing. Rather, it is intended to give a broad overview and cover the essential
+themes so that the reader is guided towards the relevant references. As such, it can serve as
+a short, non-exhaustive, review of the literature. The subject of factor modelling in ﬁnance
+is incredibly vast and the number of papers dedicated to it is substantial and still rapidly
+increasing.
+The universe of peer-reviewed ﬁnancial journals can be split in two. The ﬁrst kind is the
+academic journals . Their articles are mostly written by professors, and the audience
+consists mostly of scholars. The articles are long and often technical. Prominent examples
+are the Journal of Finance , the Review of Financial Studies and the Journal of Financial
+Economics. The second type is more for practitioners. The papers are shorter, easier
+to read, and target ﬁnance professionals predominantly. Two emblematic examples are the
+Journal of Portfolio Management and the Financial Analysts Journal . This chapter reviews
+and mentions articles published essentially in the ﬁrst family of journals.
+Beyond academic articles, several monographs are already dedicated to the topic of style
+allocation (a synonym of factor investing used for instance in theoretical articles ( Barberis
+and Shleifer (2003)) or practitioner papers ( Asness et al. (2015))). To cite but a few, we
+mention:
+• Ilmanen (2011): an exhaustive excursion into risk premia, across many asset classes,
+with a large spectrum of descriptive statistics (across factors and periods),
+• Ang (2014): covers factor investing with a strong focus on the money management
+industry,
+• Bali et al. (2016): very complete book on the cross-section of signals with statistical
+analyses (univariate metrics, correlations, persistence, etc.),
+• Jurczenko (2017): a tour on various topics given by ﬁeld experts (factor purity, pre-
+dictability, selection versus weighting, factor timing, etc.).
+Finally, we mention a few wide-scope papers on this topic: Goyal (2012), Cazalet and Ron-
+calli (2014) and Baz et al. (2015).
+13
+
+--- PDF PAGE 33 ---
+14 3 Factor investing and asset pricing anomalies
+3.1 Introduction
+The topic of factor investing, though a decades-old academic theme, has gained traction
+concurrently with the rise of equity traded funds (ETFs) as vectors of investment. Both
+have gathered momentum in the 2010 decade. Not so surprisingly, the feedback loop be-
+tween practical ﬁnancial engineering and academic research has stimulated both sides in
+a mutually beneﬁcial manner. Practitioners rely on key scholarly ﬁndings (e.g., asset pric-
+ing anomalies), while researchers dig deeper into pragmatic topics (e.g., factor exposure or
+transaction costs). Recently, researchers have also tried to quantify and qualify the impact
+of factor indices on ﬁnancial markets. For instance, Krkoska and Schenk-Hoppé (2019) ana-
+lyze herding behaviors, while Cong and Xu (2019) show that the introduction of composite
+securities increases volatility and cross-asset correlations.
+The core aim of factor models is to understand the drivers of asset prices . Broadly speak-
+ing, the rationale behind factor investing is that the ﬁnancial performance of ﬁrms depends
+on factors, whether they be latent and unobservable, or related to intrinsic characteristics
+(like accounting ratios for instance). Indeed, as Cochrane (2011) frames it, the ﬁrst essential
+question is, which characteristics really provide independent information about average re-
+turns? Answering this question helps understand the cross-section of returns and may open
+the door to their prediction.
+Theoretically, linear factor models can be viewed as special cases of the arbitrage pricing
+theory (APT) of Ross (1976), which assumes that the return of an asset n can be modelled
+as a linear combination of underlying factors fk:
+rt,n =αn +
+K∑
+k=1
+βn,kft,k +ϵt,n, (3.1)
+where the usual econometric constraints on linear models hold: E[ϵt,n] = 0, cov(ϵt,n,ϵt,m) =
+0 forn ̸=m and cov(fn,ϵn) = 0. If such factors do exist, then they are in contradiction with
+the cornerstone model in asset pricing: the capital asset pricing model (CAPM) of Sharpe
+(1964), Lintner (1965) and Mossin (1966). Indeed, according to the CAPM, the only driver
+of returns is the market portfolio. This explains why factors are also called ‘anomalies’.
+Empirical evidence of asset pricing anomalies has accumulated since the dual publication
+of Fama and French (1992) and Fama and French (1993). This seminal work has paved the
+way for a blossoming stream of literature that has its meta-studies (e.g., Green et al. (2013),
+Harvey et al. (2016) and McLean and Pontiﬀ (2016)). The regression ( 3.1) can be evaluated
+once (unconditionally) or sequentially over diﬀerent time frames. In the latter case, the
+parameters (coeﬃcient estimates) change and the models are thus called conditional (we
+refer to Ang and Kristensen (2012) and to Cooper and Maio (2019) for recent results on
+this topic as well as for a detailed review on the related research). Conditional models are
+more ﬂexible because they acknowledge that the drivers of asset prices may not be constant,
+which seems like a reasonable postulate.
+
+--- PDF PAGE 34 ---
+3.2 Detecting anomalies 15
+3.2 Detecting anomalies
+3.2.1 Challenges
+Obviously, a crucial step is to be able to identify an anomaly and the complexity of this
+task should not be underestimated. Given the publication bias towards positive results
+(see, e.g., Harvey (2017) in ﬁnancial economics), researchers are often tempted to report
+partial results that are sometimes invalidated by further studies. The need for replication
+is therefore high and many ﬁndings have no tomorrow ( Linnainmaa and Roberts (2018)),
+especially if transation costs are taken into account ( Patton and Weller (2020), Chen and
+Velikov (2020)). Nevertheless, as is demonstrated by Chen (2019), p-hacking alone cannot
+account for all the anomalies documented in the literature. One way to reduce the risk of
+spurious detection is to increase the hurdles (often, the t-statistics), but the debate is still
+ongoing ( Harvey et al. (2016), Chen (2020)), or to resort to multiple testing ( Harvey et al.
+(2020)).
+Some researchers document fading anomalies because of publication: once the anomaly
+becomes public, agents invest in it, which pushes prices up and the anomaly disappears.
+McLean and Pontiﬀ (2016) document this eﬀect in the US, but Jacobs and Müller (2020) ﬁnd
+that all other countries experience sustained post-publication factor returns. With a diﬀerent
+methodology, Chen and Zimmermann (2020) introduce a publication bias adjustment for
+returns and the authors note that this (negative) adjustment is in fact rather small. Penasse
+(2019) recommends the notion of alpha decay to study the persistence or attenuation of
+anomalies.
+The destruction of factor premia may be due to herding ( Krkoska and Schenk-Hoppé (2019),
+Volpati et al. (2020)) and could be accelerated by the democratization of so-called smart-
+beta products (ETFs notably) that allow investors to directly invest in particular styles
+(value, low volatility, etc.). For a theoretical perspective on the attractivity of factor in-
+vesting, we refer to Jin (2019). On the other hand, DeMiguel et al. (2019) argue that the
+price impact of crowding in the smart-beta universe is mitigated by trading diversiﬁcation
+stemming from external institutions that trade according to strategies outside this space
+(e.g., high frequency traders betting via order-book algorithms).
+The remainder of this subsection was inspired from Baker et al. (2017) and Harvey and Liu
+(2019a).
+3.2.2 Simple portfolio sorts
+This is the most common procedure and the one used in Fama and French (1992). The idea
+is simple. On one date,
+1. rank ﬁrms according to a particular criterion (e.g., size, book-to-market ratio);
+2. form J ≥ 2 portfolios (i.e., homogeneous groups) consisting of the same number of
+stocks according to the ranking (usually, J = 2, J = 3, J = 5 or J = 10 portfolios are
+built, based on the median, terciles, quintiles or deciles of the criterion);
+3. the weight of stocks inside the portfolio is either uniform (equal weights), or propor-
+tional to market capitalization;
+
+--- PDF PAGE 35 ---
+16 3 Factor investing and asset pricing anomalies
+4. at a future date (usually one month), report the returns of the portfolios.
+Then, iterate the procedure until the chronological end of the sample is reached.
+The outcome is a time series of portfolio returns rj
+t for each grouping j. An anomaly is
+identiﬁed if the t-test between the ﬁrst ( j = 1) and the last group ( j = J) unveils a
+signiﬁcant diﬀerence in average returns. More robust tests are described in Cattaneo et al.
+(2020). A strong limitation of this approach is that the sorting criterion could have a non-
+monotonic impact on returns and a test based on the two extreme portfolios would not detect
+it. Several articles address this concern: Patton and Timmermann (2010) and Romano and
+Wolf (2013) for instance. Another concern is that these sorted portfolios may capture not
+only the priced risk associated to the characteristic, but also some unpriced risk. Daniel
+et al. (2020b) show that it is possible to disentangle the two and make the most of altered
+sorted portfolios.
+Instead of focusing on only one criterion, it is possible to group asset according to more
+characteristics. The original paper Fama and French (1992) also combines market capitaliza-
+tion with book-to-market ratios. Each characteristic is divided into 10 buckets, which makes
+100 portfolios in total. Beyond data availability, there is no upper bound on the number of
+features that can be included in the sorting process. In fact, some authors investigate more
+complex sorting algorithms that can manage a potentially large number of characteristics
+(see e.g., Feng et al. (2019) and Bryzgalova et al. (2019b)).
+Finally, we refer to Ledoit et al. (2020) for reﬁnements that take into account the covariance
+structure of asset returns and to Cattaneo et al. (2020) for a theoretical study on the
+statistical properties of the sorting procedure (including theoretical links with regression-
+based approaches). Notably, the latter paper discusses the optimal number of portfolios and
+suggests that it is probably larger than the usual 10 often used in the literature.
+In the code and Figure 3.1 below, we compute size portfolios (equally weighted: above
+versus below the median capitalization). According to the size anomaly, the ﬁrms with
+below median market cap should earn higher returns on average. This is veriﬁed whenever
+the orange bar in the plot is above the blue one (it happens most of the time).
+df_median=[] #creating empty placeholder for temporary dataframe
+df=[]
+df_median=data_ml[['date','Mkt_Cap_12M_Usd']].groupby(
+['date']).median().reset_index() # computing median
+df_median.rename(
+columns = {'Mkt_Cap_12M_Usd': 'cap_median'}, inplace = True)
+# renaming for clarity
+df = pd.merge(
+data_ml[["date",'Mkt_Cap_12M_Usd','R1M_Usd']],
+df_median,how='left', on=[ 'date'])
+df=df.groupby(
+[pd.to_datetime(df['date']).dt.year,np.where(
+df['Mkt_Cap_12M_Usd'] > df['cap_median'],
+'large', 'small')])['R1M_Usd'].mean().reset_index()
+# groupby and defining "year" and cap logic
+df.rename(columns = {'level_1': 'cap_sort'}, inplace = True)
+df.pivot(index='date',columns='cap_sort',
+values='R1M_Usd').plot.bar(figsize=(10,6))
+plt.ylabel('Average returns ')
+
+--- PDF PAGE 36 ---
+3.2 Detecting anomalies 17
+plt.xlabel('year')
+df_median=[] #removing the temp dataframe to keep it light!
+df=[] #removing the temp dataframe to keep it light!
+FIGURE 3.1: The size factor: average returns of small versus large ﬁrms.
+3.2.3 F actors
+The construction of so-called factors follows the same lines as above. Portfolios are based
+on one characteristic and the factor is a long-short ensemble of one extreme portfolio minus
+the opposite extreme (small minus large for the size factor or high book-to-market ratio
+minus low book-to-market ratio for the value factor). Sometimes, subtleties include forming
+bivariate sorts and aggregating several portfolios together, as in the original contribution
+of Fama and French (1993). The most common factors are listed below, along with a few
+references. We refer to the books listed at the beginning of the chapter for a more exhaustive
+treatment of factor idiosyncrasies. For most anomalies, theoretical justiﬁcations have been
+brought forward, whether risk-based or behavioral. We list the most frequently cited factors
+below:
+• Size ( SMB = small ﬁrms minus large ﬁrms): Banz (1981), Fama and French (1992),
+Fama and French (1993), Van Dijk (2011), Asness et al. (2018) and Astakhov et al.
+(2019).
+• Value ( HM = high minus low: undervalued minus ‘growth’ ﬁrms): Fama and French
+(1992), Fama and French (1993), and Asness et al. (2013).
+• Momentum ( WML = winners minus losers): Jegadeesh and Titman (1993), Carhart
+(1997) and Asness et al. (2013). The winners are the assets that have experienced the
+highest returns over the last year (sometimes the computation of the return is truncated
+to omit the last month). Cross-sectional momentum is linked, but not equivalent,
+
+--- PDF PAGE 37 ---
+18 3 Factor investing and asset pricing anomalies
+to time series momentum (trend following), see, e.g., Moskowitz et al. (2012) and
+Lempérière et al. (2014). Momentum is also related to contrarian movements that
+occur both at higher and lower frequencies (short-term and long-term reversals), see
+Luo et al. (2021).
+• Proﬁtability (RMW = robust minus weak proﬁts): Fama and French (2015), Bouchaud
+et al. (2019). In the former reference, proﬁtability is measured as (revenues - (cost and
+expenses))/equity.
+• Investment ( CMA = conservative minus aggressive): Fama and French (2015), Hou
+et al. (2015). Investment is measured via the growth of total assets (divided by total
+assets). Aggressive ﬁrms are those that experience the largest growth in assets.
+• Low ‘risk’ (sometimes, BAB = betting against beta): Ang et al. (2006), Baker et al.
+(2011), Frazzini and Pedersen (2014), Boloorforoosh et al. (2020), Baker et al. (2020)
+and Asness et al. (2020). In this case, the computation of risk changes from one article
+to the other (simple volatility, market beta, idiosyncratic volatility, etc.).
+With the notable exception of the low risk premium, the most mainstream anomalies are
+kept and updated in the data library of Kenneth French ( https://mba.tuck.dartmouth.
+edu/pages/faculty/ken.french/data_library.html). Of course, the computation of the
+factors follows a particular set of rules, but they are generally accepted in the academic
+sphere. Another source of data is the AQR repository: https://www.aqr.com/Insights/
+Datasets.
+In the dataset we use for the book, we proxy the value anomaly not with the book-to-market
+ratio but with the price-to-book ratio (the book value is located in the denominator). As is
+shown in Asness and Frazzini (2013), the choice of the variable for value can have sizable
+eﬀects.
+Below, we import data from Ken French’s data library. We will use it later on in the chapter.
+import urllib.request
+min_date = 196307
+max_date = 202003
+ff_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp"
+ff_url += "/F-F_Research_Data_5_Factors_2x3_CSV.zip"
+# Create the download url
+urllib.request.urlretrieve(ff_url,'factors.zip') # Download it
+df_ff = pd.read_csv('F-F_Research_Data_5_Factors_2x3.csv',
+header=3, sep= ',', quotechar= '"')
+df_ff.rename(columns = {'Unnamed: 0':'date '},
+inplace = True) # renaming for clarity
+df_ff.rename(columns = {'Mkt-RF':'MKT_RF'},
+inplace = True) # renaming for clarity
+df_ff[['MKT_RF','SMB','HML','RMW','CMA','RF']]=df_ff[
+['MKT_RF','SMB','HML','RMW','CMA','RF']].values/100.0 # Scale returns
+idx_ff=df_ff.index[(df_ff['date']>=min_date)&(
+df_ff['date']<=max_date)].tolist()
+FF_factors=df_ff.iloc[idx_ff]
+FF_factors['year']=FF_factors.date.astype(str).str[:4]
+FF_factors.iloc[1:6,0:7].head()
+
+--- PDF PAGE 38 ---
+3.2 Detecting anomalies 19
+TABLE 3.1: Sample of monthly factor returns.
+row MKT_RF SMB HML RMW CMA RF
+1 0.0507 -0.0082 0.0182 0.0040 -0.0040 0.0025
+2 -0.0157 -0.0048 0.0017 -0.0076 0.0024 0.0027
+3 0.0253 -0.0130 -0.0004 0.0275 -0.0224 0.0029
+4 -0.0085 -0.0085 0.0170 -0.0045 0.0222 0.0027
+5 0.0183 -0.0190 -0.0006 0.0007 -0.0030 0.0029
+Posterior to the discovery of these stylized facts, some contributions have aimed at building
+theoretical models that capture these properties. We cite a handful below:
+• size and value: Berk et al. (1999), Daniel et al. (2001b), Barberis and Shleifer (2003),
+Gomes et al. (2003), Carlson et al. (2004), and Arnott et al. (2014);
+• momentum: Johnson (2002), Grinblatt and Han (2005), Vayanos and Woolley (2013),
+Choi and Kim (2014).
+In addition, recent bridges have been built between risk-based factor representations and
+behavioural theories. We refer essentially to Barberis et al. (2016) and Daniel et al. (2020a)
+and the references therein.
+While these factors (i.e., long-short portfolios) exhibit time-varying risk premia and are mag-
+niﬁed by corporate news and announcements ( Engelberg et al. (2018)), it is well-documented
+(and accepted) that they deliver positive returns over long horizons. We refer to Gagliardini
+et al. (2016) and to the survey Gagliardini et al. (2019), as well as to the related bibliog-
+raphy for technical details on estimation procedures of risk premia and the corresponding
+empirical results. A large sample study that documents regime changes in factor premia
+was also carried out by Ilmanen et al. (2019). Moreover, the predictability of returns is also
+time-varying (as documented in Farmer et al. (2019), Tsiakas et al. (2020) and Liu et al.
+(2021)), and estimation methods can be improved ( Johnson (2019)).
+In Figure 3.2, we plot the average monthly return aggregated over each calendar year for ﬁve
+common factors. The risk-free rate (which is not a factor per se) is the most stable, while
+the market factor (aggregate market returns minus the risk-free rate) is the most volatile.
+This makes sense because it is the only long equity factor among the ﬁve series.
+# groupby and defining "year" and cap logic
+FF_factors.iloc[:,1:7].groupby(FF_factors['year']).mean().plot()
+# Group by year and factor, compute average return
+plt.ylabel('value') # Set axis name and plot!
+plt.xlabel('date')
+The individual attributes of investors who allocate towards particular factors is a blossoming
+topic. We list a few references below, even though they somewhat lie out of the scope of
+this book. Betermier et al. (2017) show that value investors are older, wealthier and face
+lower income risk compared to growth investors who are those in the best position to take
+ﬁnancial risks. The study Cronqvist et al. (2015b) leads to diﬀerent conclusions: it ﬁnds
+that the propensity to invest in value versus growth assets has roots in genetics and in life
+
+--- PDF PAGE 39 ---
+20 3 Factor investing and asset pricing anomalies
+FIGURE 3.2: A verage returns of common anomalies (1963-2020). Source: Ken French li-
+brary.
+events (the latter eﬀect being conﬁrmed in Cocco et al. (2020), and the former being further
+detailed in a more general context in Cronqvist et al. (2015a)). Psychological traits can also
+explain some factors: when agents extrapolate, they are likely to fuel momentum (this topic
+is thoroughly reviewed in Barberis (2018)). Micro- and macro-economic consequences of
+these preferences are detailed in Bhamra and Uppal (2019). To conclude this paragraph, we
+mention that theoretical models have also been proposed that link agents’ preferences and
+beliefs (via prospect theory) to market anomalies (see for instance Barberis et al. (2020)).
+Finally, we highlight the need of replicability of factor premia and echo the recent editorial
+by Harvey (2020). As is shown by Linnainmaa and Roberts (2018) and Hou et al. (2020),
+many proclaimed factors are in fact very much data-dependent and often fail to deliver
+sustained proﬁtability when the investment universe is altered or when the deﬁnition of
+variable changes ( Asness and Frazzini (2013)).
+Campbell Harvey and his co-authors, in a series of papers, tried to synthesize the research
+on factors in Harvey et al. (2016), Harvey and Liu (2019a) and Harvey and Liu (2019b).
+His work underlines the need to set high bars for an anomaly to be called a ‘true’ factor.
+Increasing thresholds for p -values is only a partial answer, as it is always possible to resort
+to data snooping in order to ﬁnd an optimized strategy that will fail out-of-sample but
+that will deliver a t -statistic larger than three (or even four). Harvey (2017) recommends
+to resort to a Bayesian approach which blends data-based signiﬁcance with a prior into a
+so-called Bayesianized p-value (see subsection below).
+Following this work, researchers have continued to explore the richness of this zoo. Bryz-
+galova et al. (2019a) propose a tractable Bayesian estimation of large-dimensional factor
+
+--- PDF PAGE 40 ---
+3.2 Detecting anomalies 21
+models and evaluate all possible combinations of more than 50 factors, yielding an incred-
+ibly large number of coeﬃcients. This combined with a Bayesianized Fama and MacBeth
+(1973) procedure allows to distinguish between pervasive and superﬂuous factors. Chordia
+et al. (2020) use simulations of 2 million trading strategies to estimate the rate of false
+discoveries, that is, when a spurious factor is detected (type I error). They also advise to
+use thresholds for t-statistics that are well above three. In a similar vein, Harvey and Liu
+(2020) also underline that sometimes true anomalies may be missed because of a one-time
+t-statistic that is too low (type II error).
+The propensity of journals to publish positive results has led researchers to estimate the
+diﬀerence between reported returns and true returns. A. Y. Chen and Zimmermann (2020)
+call this diﬀerence the publication bias and estimate it as roughly 12%. That is, if a pub-
+lished average return is 8%, the actual value may in fact be closer to (1-12%)*8%=7%.
+Qualitatively, this estimation of 12% is smaller than the out-of-sample reduction in returns
+found in McLean and Pontiﬀ (2016).
+For simplicity, we assume a simple form:
+r =a +bx + e, (3.2)
+where the vector r stacks all returns of all stocks and x is a lagged variable so that the
+regression is indeed predictive. If the estimated ˆb is signiﬁcant given a speciﬁed threshold,
+then it can be tempting to conclude that x does a good job at predicting returns. Hence,
+long-short portfolios related to extreme values of x (mind the sign of ˆb) are expected to
+generate proﬁts. This is unfortunately often false because ˆb gives information on the past*
+ability of x to forecast returns. What happens in the future may be another story.
+Statistical tests are also used for portfolio sorts. Assume two extreme portfolios are expected
+to yield very diﬀerent average returns (like very small cap versus very large cap, or strong
+winners versus bad losers). The portfolio returns are written r+
+t and r−
+t . The simplest test
+for the mean is t =
+√
+T
+mr+−mr−
+σr+−r−
+, where T is the number of points and mr± denotes the
+means of returns and σr+−r− is the standard deviation of the diﬀerence between the two
+series, i.e., the volatility of the long-short portfolio. In short, the statistic can be viewed as
+a scaled Sharpe ratio (though usually these ratios are computed for long-only portfolios)
+and can in turn be used to compute p-values to assess the robustness of an anomaly. As is
+shown in Linnainmaa and Roberts (2018) and Hou et al. (2020), many factors discovered
+by reasearchers fail to survive in out-of-sample tests.
+One reason why people are overly optimistic about anomalies they detect is the widespread
+reverse interpretation of the p-value. Often, it is thought of as the probability of one hypoth-
+esis (e.g., my anomaly exists) given the data. In fact, it’s the opposite; it’s the likelihood of
+your data sample, knowing that the anomaly holds.
+p − value =P [D|H]
+target prob. =P [H|D] = P [D|H]
+P [D] ×P [H],
+where H stands for hypothesis and D for data. The equality in the second row is a plain
+application of Bayes’ identity: the interesting probability is in fact a transform of the p-value.
+
+--- PDF PAGE 41 ---
+22 3 Factor investing and asset pricing anomalies
+Two articles (at least) discuss this idea. Harvey (2017) introduces Bayesianizedp-values:
+Bayesianizedp − value = Bpv =e−t2/2 × prior
+1 +e−t2/2 × prior, (3.3)
+wheret is the t-statistic obtained from the regression (i.e., the one that deﬁnes the p-value)
+and prior is the analyst’s estimation of the odds that the hypothesis (anomaly) is true. The
+prior is coded as follows. Suppose there is a p% chance that the null holds (i.e., (1-p)%
+for the anomaly). The odds are coded as p/(1 −p). Thus, if the t-statistic is equal to 2
+(corresponding to a p-value of 5% roughly) and the prior odds are equal to 6, then the Bpv
+is equal to e−2 × 6 × (1 +e−2 × 6)−1 ≈ 0
+.448 and there is a 44.8% chance that the null is
+true. This interpretation stands in sharp contrast with the original p-value which cannot be
+viewed as a probability that the null holds. Of course, one drawback is that the level of the
+prior is crucial and solely user-speciﬁed.
+The work of Chinco et al. (2021) is very diﬀerent but shares some key concepts, like the in-
+troduction of Bayesian priors in regression outputs. They show that coercing the predictive
+regression with an L2 constraint (see the ridge regression in Chapter 5) amounts to intro-
+ducing views on what the true distribution of b is. The stronger the constraint, the more
+the estimate ˆb will be shrunk towards zero. One key idea in their work is the assumption
+of a distribution for the true b across many anomalies. It is assumed to be Gaussian and
+centered. The interesting parameter is the standard deviation: the larger it is, the more fre-
+quently signiﬁcant anomalies are discovered. Notably, the authors show that this parameter
+changes through time, and we refer to the original paper for more details on this subject.
+3.2.4 F ama-MacBeth regressions
+Another detection method was proposed by Fama and MacBeth (1973) through a two-stage
+regression analysis of risk premia. The ﬁrst stage is a simple estimation of the relationship
+(3.1): the regressions are run on a stock-by-stock basis over the corresponding time series.
+The resulting estimates ˆβi,k are then plugged into a second series of regressions:
+rt,n =γt,0 +
+K∑
+k=1
+γt,k ˆβn,k +εt,n, (3.4)
+which are run date-by-date on the cross-section of assets. 1 Theoretically, the betas would be
+known and the regression would be run on the βn,k instead of their estimated values. The
+ˆγt,k estimate the premia of factor k at time t. Under suitable distributional assumptions on
+theεt,n, statistical tests can be performed to determine whether these premia are signiﬁcant
+or not. Typically, the statistic on the time-aggregated (average) premia ˆγk = 1
+T
+∑T
+t=1 ˆγt,k:
+tk = ˆγk
+ˆσk/
+√
+T
+is often used in pure Gaussian contexts to assess whether or not the factor is signiﬁcant ( ˆσk
+is the standard deviation of the ˆγt,k).
+1Originally, Fama and MacBeth (1973) work with the market beta only: rt,n =αn +βnrt,M +ϵt,n and
+the second pass included non-linear terms: rt,n =γn,0 +γt,1 ˆβn +γt,2 ˆβ2
+n +γt,3 ˆsn +ηt,n, where the ˆsn are
+risk estimates for the assets that are not related to the betas. It is then possible to perform asset pricing
+tests to infer some properties. For instance, test whether betas have a linear inﬂuence on returns or not
+(E[γt,2] = 0 ), or test the validity of the CAPM (which implies E[γt,0] = 0 ).
+
+--- PDF PAGE 42 ---
+3.2 Detecting anomalies 23
+We refer to Jagannathan and Wang (1998) and Petersen (2009) for technical discussions on
+the biases and losses in accuracy that can be induced by standard ordinary least squares
+(OLS) estimations. Moreover, as the ˆβi,k in the second-pass regression are estimates, a
+second level of errors can arise (the so-called errors in variables). The interested reader will
+ﬁnd some extensions and solutions in Shanken (1992), Ang et al. (2018), and Jegadeesh
+et al. (2019).
+Below, we perform Fama and MacBeth (1973) regressions on our sample. We start by the
+ﬁrst pass: individual estimation of betas. We build a dedicated function below and use some
+functional programming to automate the process.
+from pandas.tseries.offsets import MonthEnd
+stocks_list=list(returns.columns)
+FF_factors['date']=pd.to_datetime(
+FF_factors['date'],format='%Y%m')+ MonthEnd(0)
+FF_factors['date']=FF_factors['date'].dt.date
+FF_factors['date']=FF_factors['date'].astype(str)
+data_FM = pd.merge(returns.iloc[:,0].reset_index(),
+FF_factors.iloc[:,0:7],how='left',on=['date'])
+data=FF_factors
+data_FM.dropna(inplace=True)
+import statsmodels.api as sm
+results_params =[]
+reg_result=[]
+df_res_full=[]
+for i in range(len(returns.columns)):
+Y=returns.iloc[:,i].shift(-1).reset_index()
+Y=Y.drop(columns=['date'])
+Y.dropna(inplace=True)
+results=sm.OLS(endog=Y,exog=sm.add_constant(
+data_FM.iloc[0:227,2:7])).fit()
+results_params=results.params
+reg_result_tmp=pd.DataFrame(results_params)
+reg_result_tmp['stock_id']=stocks_list[i]
+df_res_full.append(reg_result_tmp)
+df_res_full = pd.concat(df_res_full)
+df_res_full.reset_index(inplace=True)
+df_res_full.rename(columns={"index":"factors_name",0:
+↪→"betas"},inplace=True)
+df_res_full_mat=df_res_full.pivot(index='stock_id',
+columns='factors_name',values='betas')
+column_names_inverted = ["const", "MKT_RF", "SMB","HML","RMW","CMA"]
+reg_result = df_res_full_mat.reindex(columns=column_names_inverted)
+reg_result.head()
+In the table, MKT_RF is the market return minus the risk free rate. The corresponding
+coeﬃcient is often referred to as the beta, especially in univariate regressions. We then
+reformat these betas from Table 3.2 to prepare the second pass. Each line corresponds to
+one asset: the ﬁrst 5 columns are the estimated factor loadings and the remaining ones are
+the asset returns (date by date).
+
+--- PDF PAGE 43 ---
+24 3 Factor investing and asset pricing anomalies
+TABLE 3.2: Sample of beta values (row numbers are stock IDs).
+const MKT_RF SMB HML RMW CMA
+1 0.016794 0.163080 0.113891 -0.501349 0.564917 0.625479
+3 0.009116 -0.221471 -0.119134 0.047801 -0.183690 -0.266907
+4 0.011704 -0.001671 -0.047076 0.001015 -0.304841 -0.006846
+7 0.014391 -0.345367 -0.017726 -0.012223 -0.276708 0.218442
+9 0.013088 -0.196857 0.260565 0.139574 -0.174628 0.084721
+TABLE 3.3: Sample of reformatted beta values (ready for regression).
+stock_id const MKT_RF SMB HML RMW CMA
+1 0.016794 0.163080 0.113891 -0.501349 0.564917 0.625479
+3 0.009116 -0.221471 -0.119134 0.047801 -0.183690 -0.266907
+4 0.011704 -0.001671 -0.047076 0.001015 -0.304841 -0.006846
+7 0.014391 -0.345367 -0.017726 -0.012223 -0.276708 0.218442
+9 0.013088 -0.196857 0.260565 0.139574 -0.174628 0.084721
+returns_trsp=returns.transpose()
+df_2nd_pass=pd.concat([reg_result.iloc[:,1:6],returns.
+↪→transpose()],axis=1)
+df_2nd_pass.head()
+We observe that the values of the ﬁrst column (market betas) revolve around one, which is
+what we would expect. Finally, we are ready for the second round of regressions.
+betas=df_2nd_pass.iloc[:,0:5]
+date_list=list(returns_trsp.columns)
+results_params=[]
+reg_result=[]
+df_res_full=[]
+for j in range(len(returns_trsp.columns)):
+Y=returns_trsp.iloc[:,j]
+results=sm.OLS(endog=Y,exog=sm.add_constant(betas)).fit()
+results_params=results.params
+reg_result_tmp=pd.DataFrame(results_params)
+reg_result_tmp['date']=date_list[j]
+df_res_full.append(reg_result_tmp)
+df_res_full = pd.concat(df_res_full)
+df_res_full.reset_index(inplace=True)
+gammas=df_res_full
+gammas.rename(columns={"index":"factors_name", 0: betas "},inplace=True)
+gammas_mat=gammas.
+↪→pivot(index='date',columns='factors_name',values='betas')
+
+--- PDF PAGE 44 ---
+3.2 Detecting anomalies 25
+TABLE 3.4: Sample of gamma (premia) values.
+date const MKT_RF SMB HML RMW CMA
+2000-01-31 0.016321 -0.028149 -0.005428 0.026040 0.078635 0.020799
+2000-02-29 0.038006 0.006451 0.001304 -0.051183 -0.088695 0.043300
+2000-03-31 0.014755 0.032022 0.056734 -0.068795 -0.103291 -0.045641
+2000-04-30 0.132511 0.199729 -0.452970 0.281773 0.341264 -0.023676
+2000-05-31 0.012919 -0.050791 -0.064603 0.067470 0.110572 0.057169
+column_names_inverted = ["const", "MKT_RF", "SMB","HML","RMW","CMA"]
+gammas_mat = gammas_mat.reindex(columns=column_names_inverted)
+gammas_mat.head()
+Visually, the estimated premia are also very volatile. We plot their estimated values for the
+market, SMB and HML factors.
+gammas_mat.iloc[:,1:4].plot(
+figsize=(14,10), subplots=True,sharey=True, sharex= True)
+# Take gammas:
+plt.show() # Plot
+FIGURE 3.3: Time series plot of gammas (premia) in Fama-MacBeth regressions.
+The two spikes at the end of the sample signal potential colinearity issues; two factors seem
+to compensate in an unclear aggregate eﬀect. This underlines the usefulness of penalized
+estimates (see Chapter 5).
+
+--- PDF PAGE 45 ---
+26 3 Factor investing and asset pricing anomalies
+3.2.5 F actor competition
+The core purpose of factors is to explain the cross-section of stock returns. For theoretical
+and practical reasons, it is preferable if redundancies within factors are avoided. Indeed,
+redundancies imply collinearity which is known to perturb estimates ( Belsley et al. (2005)).
+In addition, when asset managers decompose the performance of their returns into factors,
+overlaps (high absolute correlations) between factors yield exposures that are less inter-
+pretable; positive and negative exposures compensate each other spuriously.
+A simple protocol to sort out redundant factors is to run regressions of each factor against
+all others:
+ft,k =ak +
+∑
+j̸=k
+δk,jft,j +ϵt,k. (3.5)
+The interesting metric is then the test statistic associated to the estimation of ak. If ak
+is signiﬁcantly diﬀerent from zero, then the cross-section of (other) factors fails to explain
+exhaustively the average return of factor k. Otherwise, the return of the factor can be
+captured by exposures to the other factors and is thus redundant.
+One mainstream application of this technique was performed in Fama and French (2015),
+in which the authors show that the HML factor is redundant when taking into account four
+other factors (Market, SMB, RMW, and CMA). Below, we reproduce their analysis on an
+updated sample. We start our analysis directly with the database maintained by Kenneth
+French.
+We can run the regressions that determine the redundancy of factors via the procedure
+deﬁned in Equation ( 3.5).
+df_res_full=[]
+for i in range(0,5):
+factors_list_full = ["MKT_RF","SMB","HML","RMW","CMA"]
+factors_list_tmp=factors_list_full
+Y=FF_factors[factors_list_full[i]]
+factors_list_tmp.remove(factors_list_full[i])
+data=FF_factors[factors_list_tmp]
+results=sm.OLS(endog=Y,exog=sm.add_constant(data)).fit()
+results_param=results.params
+reg_result_tmp=pd.DataFrame(results_param)
+reg_result_tmp['factor_mnemo']=Y.name
+reg_result_tmp['pvalue']=results.pvalues
+df_res_full.append(reg_result_tmp)
+df_res_full = pd.concat(df_res_full)
+df_res_full.reset_index(inplace=True)
+df_res_full.rename(columns={0: "coeff"},inplace=True)
+We obtain the vector of α values from Equation ( 3.5). Below, we format these ﬁgures along
+with p-value thresholds and export them in a summary table. The signiﬁcance levels of
+coeﬃcients is coded as follows: 0< (∗ ∗ ∗)< 0.001< (∗∗)< 0.01< (∗)< 0.05.
+df_significance=df_res_full
+conditions = [(df_significance['pvalue'] > 0 ) & (
+
+--- PDF PAGE 46 ---
+3.2 Detecting anomalies 27
+TABLE 3.5: Factor competition among the Fama and French (2015) ﬁve factors. The sample
+starts in 1963-07 and ends in 2020-03. The regressions are run on monthly returns.
+Dep. Variable Intercept MKT_RF SMB HML RMW CMA
+MKT_RF 0.008 (***) NA 0.264 (***) 0.101 -0.345 (***) -0.903 (***)
+SMB 0.003 (*) 0.131 (***) NA 0.077 -0.43 (***) -0.126
+HML 0 0.028 0.038 NA 0.148 (***) 1.02 (***)
+RMW 0.004 (***) -0.096 (***) -0.219 (***) 0.143 (***) NA -0.287 (***)
+CMA 0.002 (***) -0.11 (***) -0.03 0.455 (***) -0.123 (***) NA
+df_significance['pvalue'] < 0.001 ), # create a conditions ' list
+(df_significance['pvalue']>0.001) & (df_significance['pvalue']<0.01),
+(df_significance['pvalue']>0.01) & (df_significance['pvalue']<0.05),
+(df_significance['pvalue'] > 0.05 )]
+valuest = ['(***)','(**)','(*)','na']
+# Values assign for each condition
+# create new column and use np.select to assign values
+df_significance['significance']=np.select(conditions,valuest).astype(str)
+df_significance['coeff']=round(df_significance.coeff,3)
+df_significance['coeff_stars']=df_significance.coeff.astype(
+str)+' ' +df_significance.significance
+# display updated DataFrame in the right shape
+new_index=['MKT_RF','SMB','HML','RMW','CMA']
+df_significance_pivot=df_significance.pivot(
+index='index',columns='factor_mnemo',values='coeff_stars').
+↪→transpose()
+df_significance_pivot= df_significance_pivot.reindex(
+columns=column_names_inverted)
+df_significance_pivot.reindex(new_index)
+We conﬁrm that the HML factor remains redundant when the four others are present in the
+asset pricing model. The ﬁgures we obtain are very close to the ones in the original paper
+(Fama and French (2015)), which makes sense, since we only add 5 years to their initial
+sample.
+We conﬁrm that the HML factor remains redundant when the four others are present in the
+asset pricing model. The ﬁgures we obtain are very close to the ones in the original paper
+(Fama and French (2015)), which makes sense, since we only add 5 years to their initial
+sample.
+At a more macro level, researchers also try to ﬁgure out which models (i.e., combinations
+of factors) are the most likely, given the data empirically observed (and possibly given
+priors formulated by the econometrician). For instance, this stream of literature seeks to
+quantify to which extent the 3-factor model of Fama and French (1993) outperforms the
+5 factors in Fama and French (2015). In this direction, De Moor et al. (2015) introduce a
+novel computation for p-values that compare the relative likelihood that two models pass a
+
+--- PDF PAGE 47 ---
+28 3 Factor investing and asset pricing anomalies
+zero-alpha test. More generally, the Bayesian method of Barillas and Shanken (2018) was
+subsequently improved by Chib et al. (2020).
+Lastly, even the optimal number of factors is a subject of disagreement among conclusions
+of recent work. While the traditional literature focuses on a limited number (3-5) of factors,
+more recent research by DeMiguel et al. (2020), He et al. (2020), Kozak et al. (2019) and
+Freyberger et al. (2020) advocates the need to use at least 15 or more (in contrast, Kelly
+et al. (2019) argue that a small number of latent factors may suﬃce). Green et al. (2017)
+even ﬁnd that the number of characteristics that help explain the cross-section of returns
+varies in time.
+3.2.6 Advanced techniques
+The ever increasing number of factors combined to their importance in asset management
+has led researchers to craft more subtle methods in order to “organize” the so-called factor
+zoo and, more importantly, to detect spurious anomalies and compare diﬀerent asset pricing
+model speciﬁcations. We list a few of them below:
+• Feng et al. (2020) combine LASSO selection with Fama-MacBeth regressions to test if
+new factor models are worth it. They quantify the gain of adding one new factor to a
+set of predeﬁned factors and show that many factors reported in papers published in
+the 2010 decade do not add much incremental value;
+• Harvey and Liu (2019a) (in a similar vein) use bootstrap on orthogonalized factors.
+They make the case that correlations among predictors is a major issue and their
+method aims at solving this problem. Their lengthy procedure seeks to test if maximal
+additional contribution of a candidate variable is signiﬁcant;
+• Fama and French (2018) compare asset pricing models through squared maximum
+Sharpe ratios;
+• Giglio and Xiu (2019) estimate factor risk premia using a three-pass method based on
+principal component analysis;
+• Pukthuanthong et al. (2018) disentangle priced and non-priced factors via a combina-
+tion of principal component analysis and Fama and MacBeth (1973) regressions;
+• Gospodinov et al. (2019) warn against factor misspeciﬁcation (when spurious factors are
+included in the list of regressors). Traded factors ( resp. macro-economic factors) seem
+more likely (resp. less likely) to yield robust identiﬁcations (see also Bryzgalova (2016)).
+There is obviously no infallible method, but the number of contributions in the ﬁeld high-
+lights the need for robustness. This is evidently a major concern when crafting investment
+decisions based on factor intuitions. One major hurdle for short-term strategies is the likely
+time-varying feature of factors. We refer for instance to Ang and Kristensen (2012) and
+Cooper and Maio (2019) for practical results and to Gagliardini et al. (2016) and Ma et al.
+(2020) for more theoretical treatments (with additional empirical results).
+
+--- PDF PAGE 48 ---
+3.3 Factors or characteristics? 29
+3.3 Factors or characteristics?
+The decomposition of returns into linear factor models is convenient because of its simple
+interpretation. There is nonetheless a debate in the academic literature about whether ﬁrm
+returns are indeed explained by exposure to macro-economic factors or simply by the char-
+acteristics of ﬁrms. In their early study, Lakonishok et al. (1994) argue that one explanation
+of the value premium comes from incorrect extrapolation of past earning growth rates. In-
+vestors are overly optimistic about ﬁrms subject to recent proﬁtability. Consequently, future
+returns are (also) driven by the core (accounting) features of the ﬁrm. The question is then
+to disentangle which eﬀect is the most pronounced when explaining returns: characteristics
+versus exposures to macro-economic factors.
+In their seminal contribution on this topic, Daniel and Titman (1997) provide evidence in
+favour of the former (two follow-up papers are Daniel et al. (2001a) and Daniel and Titman
+(2012)). They show that ﬁrms with high book-to-market ratios or small capitalizations
+display higher average returns, even if they are negatively loaded on the HML or SMB
+factors. Therefore, it seems that it is indeed the intrinsic characteristics that matter, and
+not the factor exposure. For further material on characteristics’ role in return explanation
+or prediction, we refer to the following contributions:
+• Section 2.5.2. in Goyal (2012) surveys pre-2010 results on this topic;
+• Chordia et al. (2019) ﬁnd that characteristics explain a larger proportion of variation
+in estimated expected returns than factor loadings;
+• Kozak et al. (2018) reconcile factor-based explanations of premia to a theoretical model
+in which some agents’ demands are sentiment-driven;
+• Han et al. (2019) show with penalized regressions that 20 to 30 characteristics (out of
+94) are useful for the prediction of monthly returns of US stocks. Their methodology
+is interesting: they regress returns against characteristics to build forecasts and then
+regress the returns on the forecast to assess if they are reliable. The latter regression
+uses a LASSO-type penalization (see Chapter 5) so that useless characteristics are
+excluded from the model. The penalization is extended to elasticnet in Rapach and
+Zhou (2019).
+• Kelly et al. (2019) and Kim et al. (2019) both estimate models in which factors are
+latent, but loadings (betas) and possibly alphas depend on characteristics. Kirby (2020)
+generalizes the ﬁrst approach by introducing regime-switching. In contrast, Lettau and
+Pelger (2020a) and Lettau and Pelger (2020b) estimate latent factors without any link
+to particular characteristics (and provide large sample asymptotic properties of their
+methods).
+• In the same vein as Hoechle et al. (2018), Gospodinov et al. (2019) and Bryzgalova
+(2016) discuss potential errors that arise when working with portfolio sorts that yield
+long-short returns. The authors show that in some cases, tests based on this procedure
+may be deceitful. This happens when the characteristic chosen to perform the sort is
+correlated with an external (unobservable) factor. They propose a novel regression-based
+approach aimed at bypassing this problem.
+
+--- PDF PAGE 49 ---
+30 3 Factor investing and asset pricing anomalies
+More recently and in a separate stream of literature, Koijen and Yogo (2019) have intro-
+duced a demand model in which investors form their portfolios according to their preferences
+towards particular ﬁrm characteristics. They show that this allows them to mimic the port-
+folios of large institutional investors. In their model, aggregate demands (and hence, prices)
+are directly linked to characteristics, not to factors. In a follow-up paper, Koijen et al.
+(2019) show that a few sets of characteristics suﬃce to predict future returns. They also
+show that, based on institutional holdings from the UK and the US, the largest investors are
+those who are the most inﬂuencial in the formation of prices. In a similar vein, Betermier
+et al. (2019) derive an elegant (theoretical) general equilibrium model that generates some
+well-documented anomalies (size, book-to-market). The models of Arnott et al. (2014) and
+Alti and Titman (2019) are also able to theoretically generate known anomalies. Finally, in
+Martin and Nagel (2019), characteristics inﬂuence returns via the role they play in the pre-
+dictability of dividend growth. This paper discussed the asymptotic case when the number
+of assets and the number of characteristics are proportional and both increase to inﬁnity.
+3.4 Hot topics: momentum, timing, and ESG
+3.4.1 F actor momentum
+A recent body of literature unveils a time series momentum property of factor returns. For
+instance, Gupta and Kelly (2019) report that autocorrelation patterns within these returns
+is statistically signiﬁcant. 2 In the same vein, Arnott et al. (2020) make the case that the
+industry momentum found in Moskowitz and Grinblatt (1999) can in fact be explained by
+this factor momentum. Going even further, Ehsani and Linnainmaa (2019) conclude that
+the original momentum factor is in fact the aggregation of the autocorrelation that can be
+found in all other factors.
+Given the data obtained on Ken French’s website, we compute the autocorrelation function
+(ACF) of factors. We recall that
+ACFk(xt) = E[(xt − ¯x)(xt+k − ¯x)].
+fig, ax = plt.subplots(2,2,figsize=(10,5),sharex='all', sharey ='all')
+# subplot and sharing axes
+sm.graphics.tsa.plot_acf(FF_factors.RMW, lags =10, ax =ax[0,0],title='RMW')
+sm.graphics.tsa.plot_acf(FF_factors.CMA, lags =10, ax =ax[1,0],title='CMA')
+sm.graphics.tsa.plot_acf(FF_factors.SMB, lags =10, ax =ax[0,1],title='SMB')
+sm.graphics.tsa.plot_acf(FF_factors.HML, lags =10, ax =ax[1,1],title='HML')
+plt.show()
+2Autocorrelation in aggregate/portfolio returns is a widely documented eﬀect since the seminal paper
+Lo and MacKinlay (1990) (see also Moskowitz et al. (2012)).
+
+--- PDF PAGE 50 ---
+3.4 Hot topics: momentum, timing, and ESG 31
+FIGURE 3.4: Autocorrelograms of common factor portfolios.
+Of the four chosen series, only the size factor is not signiﬁcantly autocorrelated at the ﬁrst
+order.
+3.4.2 F actor timing
+Given the abundance of evidence of the time-varying nature of factor premia, it is legitimate
+to wonder if it is possible to predict when factor will perform well or badly. The evidence
+on the eﬀectiveness of timing is diverse: positive for Greenwood and Hanson (2012), Hodges
+et al. (2017), Hasler et al. (2019), Haddad et al. (2020) and Lioui and Tarelli (2020), negative
+for Asness et al. (2017) and mixed for Dichtl et al. (2019). There is no consensus on which
+predictors to use (general macroeconomic indicators in Hodges et al. (2017), stock issuances
+versus repurchases in Greenwood and Hanson (2012), and aggregate fundamental data in
+Dichtl et al. (2019)). In ML-based factor investing, it is possible to resort to more granularity
+by combining ﬁrm-speciﬁc attributes to large-scale economic data as we explain in Section
+4.7.2.
+3.4.3 The green factors
+The demand for ethical ﬁnancial products has sharply risen during the 2010 decade, leading
+to the creation of funds dedicated to socially responsible investing (SRI - see Camilleri
+(2021)). Though this phenomenon is not really new ( Schueth (2003), Hill et al. (2007)), its
+acceleration has prompted research about whether or not characteristics related to ESG
+criteria (environmental, social, governance) are priced. Dozens and even possibly hundreds
+of papers have been devoted to this question, but no consensus has been reached. More and
+more, researchers study the ﬁnancial impact of climate change (see Bernstein et al. (2019),
+Hong et al. (2019) and Hong et al. (2020)) and the societal push for responsible corporate
+behavior (Fabozzi (2020), Kurtz (2020)). We gather below a very short list of papers that
+suggests conﬂicting results:
+• favorable: ESG investing works ( Kempf and Osthoﬀ (2007) and Cheema-Fox et al.
+(2020)), can work (Nagy et al. (2016) and Alessandrini and Jondeau (2020)), or can
+at least be rendered eﬃcient (Branch and Cai (2012)). A large meta-study reports
+
+--- PDF PAGE 51 ---
+32 3 Factor investing and asset pricing anomalies
+overwhelming favorable results ( Friede et al. (2015)), but of course, they could well
+stem from the publication bias towards positive results.
+• unfavorable: Ethical investing is not proﬁtable according to Adler and Kritzman
+(2008) and Blitz and Swinkels (2020). An ESG factor should be long unethical ﬁrms
+and short ethical ones ( Lioui (2018)).
+• mixed: ESG investing may be beneﬁcial globally but not locally ( Chakrabarti and Sen
+(2020)). Portfolios relying on ESG screening do not signiﬁcantly outperform those with
+no screening but are subject to lower levels of volatility ( Gibson et al. (2020) and Gougler
+and Utz (2020)). As is often the case, the devil is in the details, and results depend on
+whether to use E, S, or G ( Bruder et al. (2019)).
+On top of these contradicting results, several articles point towards complexities in the
+measurement of ESG. Depending on the chosen criteria and on the data provider, results
+can change drastically (see Galema et al. (2008), Berg et al. (2020), and Atta-Darkua et al.
+(2020)).
+We end this short section by noting that of course ESG criteria can directly be integrated
+into ML model, as is for instance done in de Franco et al. (2020).
+3.5 The links with machine learning
+Given the exponential increase in data availability, the obvious temptation of any asset
+manager is to try to infer future returns from the abundance of attributes available at the
+ﬁrm level. We allude to classical data such as accounting ratios and to alternative data,
+such as sentiment. This task is precisely the aim of Machine Learning. Given a large set of
+predictor variables ( X), the goal is to predict a proxy for future performance y through a
+model of the form ( 2.1).
+Some attempts toward this direction have already been made (e.g., Brandt et al. (2009),
+Hjalmarsson and Manchev (2012), Ammann et al. (2016) and DeMiguel et al. (2020)), but
+not with any ML intent or focus originally. In retrospect, these approaches do share some
+links with ML tools. The general formulation is the following. At time T , the agent or
+investor seeks to solve the following program:
+max
+θT
+ET [u(rp,T+1)] = max
+θT
+ET
+[
+u
+(
+( ¯wT + xTθT )′ rT+1
+)]
+,
+where u is some utility function and rp,T+1 = ( ¯wT + xTθT )′ rT+1 is the return of the
+portfolio, which is deﬁned as a benchmark ¯wT plus some deviations from this benchmark
+that are a linear function of features xTθT . The above program may be subject to some
+external constraints (e.g., to limit leverage).
+In practice, the vector θT must be estimated using past data (from T −τ to T − 1): the
+agent seeks the solution of
+max
+θT
+1
+τ
+T−1∑
+t=T−τ
+u
+(NT∑
+i=1
+(
+¯wi,t +θ′
+T xi,t
+)
+ri,t+1
+)
+(3.6)
+
+--- PDF PAGE 52 ---
+3.5 The links with machine learning 33
+on a sample of size τ whereNT is the number of asset in the universe. The above formulation
+can be viewed as a learning task in which the parameters are chosen such that the reward
+(average return) is maximized.
+3.5.1 Short list of recent references
+Independent of a characteristics-based approach, ML applications in ﬁnance have blos-
+somed, initially working with price data only and later on integrating ﬁrm characteristics
+as predictors. We cite a few references below, grouped by methodological approach:
+• penalized quadratic programming: Goto and Xu (2015), Ban et al. (2016), and Perrin
+and Roncalli (2019),
+• regularized predictive regressions: Rapach et al. (2013) and Chinco et al. (2019a),
+• support vector machines: Cao and Tay (2003) (and the references therein),
+• model comparison and/or aggregation: Kim (2003), Huang et al. (2005), Matías and
+Reboredo (2012), Reboredo et al. (2012), Dunis et al. (2013), Gu et al. (2020) and
+Guida and Coqueret (2018b). The latter two more recent articles work with a large
+cross-section of characteristics.
+We provide more detailed lists for tree-based methods, neural networks and reinforcement
+learning techniques in Chapters 6, 7, and 16, respectively. Moreover, we refer to Ballings
+et al. (2015) for a comparison of classiﬁers and to Henrique et al. (2019) and Bustos and
+Pomares-Quimbaya (2020) for surveys on ML-based forecasting techniques.
+3.5.2 Explicit connections with asset pricing models
+The ﬁrst and obvious link between factor investing and asset pricing is (average) return
+prediction. The main canonical academic reference is is Gu et al. (2020). Let us ﬁrst write
+the general equation and then comment on it:
+rt+1,n =g(xt,n) +ϵt+1. (3.7)
+The interesting discussion lies in the diﬀerences between the above model and that of
+Equation (3.1). The ﬁrst obvious diﬀerence is the introduction of the non-linear function g;
+indeed, there is no reason (beyond simplicity and interpretability) why we should restrict
+the model to linear relationships. One early reference for non-linearities in asset pricing
+kernels is Bansal and Viswanathan (1993).
+More importantly, the second diﬀerence between ( 3.7) and ( 3.1) is the shift in the time
+index. Indeed, from an investor’s perspective, the interest is to be able to predict some
+information about the structure of the cross-section of assets. Explaining asset returns with
+synchronous factors is not useful because the realization of factor values is not known in
+advance. Hence, if one seeks to extract value from the model, there needs to be a time
+interval between the observation of the state space (which we call xt,n) and the occurrence
+of the returns. Once the model ˆg is estimated, the time-t (measurable) value g(xt,n) will
+give a forecast for the (average) future returns. These predictions can then serve as signals
+in the crafting of portfolio weights (see Chapter 12 for more on that topic).
+While most studies do work with returns on the l.h.s. of (3.7), there is no reason why
+other indicators should not be used. Returns are straightforward and simple to compute,
+but they could very well be replaced by more sophisticated metrics, like the Sharpe ratio,
+
+--- PDF PAGE 53 ---
+34 3 Factor investing and asset pricing anomalies
+for instance. The ﬁrms’ features would then be used to predict a risk-adjusted performance
+rather than simple returns.
+Beyond the explicit form of Equation (3.7 ), several other ML-related tools can also be used
+to estimate asset pricing models. This can be achieved in several ways, some of which we
+list below.
+First, one mainstream problem in asset pricing is to characterize the stochastic discount
+factor (SDF) Mt, which satisﬁes Et[Mt+1(rt+1,n −rt+1,f)] = 0 for any asset n (see Cochrane
+(2009)). This equation is a natural playing ﬁeld for the generalized method of moment
+(Hansen (1982)): Mt must be such that
+E[Mt+1Rt+1,ng(Vt)] = 0, (3.8)
+where the instrumental variables Vt are Ft-measurable (i.e., are known at time t) and the
+capital Rt+1,n denotes the excess return of asset n. In order to reduce and simplify the
+estimation problem, it is customary to deﬁne the SDF as a portfolio of assets (see chapter
+3 in Back (2010)). In Chen et al. (2020), the authors use a generative adversarial network
+(GAN, see Section 7.6.1) to estimate the weights of the portfolios that are the closest to
+satisfy (3.8) under a strongly penalizing form.
+A
+second approach is to try to model asset returns as linear combinations of factors, just
+as in (3.1 ). We write in compact notation
+rt,n =αn +β′
+t,nft +ϵt,n,
+and we allow the loadings βt,n to be time-dependent. The trick is then to introduce the
+ﬁrm characteristics in the above equation. Traditionally, the characteristics are present in
+the deﬁnition of factors (as in the seminal deﬁnition of Fama and French (1993)). The
+decomposition of the return is made according to the exposition of the ﬁrm’s return to
+these factors constructed according to market size, accounting ratios, past performance,
+etc. Given the exposures, the performance of the stock is attributed to particular style
+proﬁles (e.g., small stock, or value stock, etc.).
+Habitually, the factors are heuristic portfolios constructed from simple rules like thresh-
+olding. For instance, ﬁrms below the 1/3 quantile in book-to-market are growth ﬁrms and
+those above the 2/3 quantile are the value ﬁrms. A value factor can then be deﬁned by the
+long-short portfolio of these two sets, with uniform weights. Note that Fama and French
+(1993) use a more complex approach which also takes market capitalization into account
+both in the weighting scheme and also in the composition of the portfolios.
+One of the advances enabled by machine learning is to automate the construction of the
+factors. It is for instance the approach of Feng et al. (2019). Instead of building the factors
+heuristically, the authors optimize the construction to maximize the ﬁt in the cross-section
+of returns. The optimization is performed via a relatively deep feed-forward neural network
+and the feature space is lagged so that the relationship is indeed predictive, as in Equation
+(3.7). Theoretically, the resulting factors help explain a substantially larger proportion of
+the in-sample variance in the returns. The prediction ability of the model depends on how
+well it generalizes out-of-sample.
+
+--- PDF PAGE 54 ---
+3.6 Coding exercises 35
+A third approach is that of Kelly et al. (2019) (though the statistical treatment is not
+machine learning per se). 3 Their idea is the opposite: factors are latent (unobserved) and
+it is the betas (loadings) that depend on the characteristics. This allows many degrees of
+freedom because in rt,n = αn + (βt,n(xt−1,n))′ft +ϵt,n, only the characteristics xt−1,n are
+known and both the factors ft and the functional forms βt,n(·) must be estimated. In their
+article, Kelly et al. (2019) work with a linear form, which is naturally more tractable.
+Lastly, a fourth approach (introduced in Gu et al. (2021)) goes even further and combines
+two neural network architectures. The ﬁrst neural network takes characteristics xt−1 as
+inputs and generates factor loadings βt−1(xt−1). The second network transforms returns rt
+into factor values ft(rt) (in Feng et al. (2019)). The aggregate model can then be written:
+rt =βt−1(xt−1)′ft(rt) +ϵt. (3.9)
+The above speciﬁcation is quite special because the output (on the l.h.s.) is also present as
+input (in the r.h.s.). In machine learning, autoencoders (see Section 7.6.2) share the same
+property. Their aim, just like in principal component analysis, is to ﬁnd a parsimonious non-
+linear representation form for a dataset (in this case, returns). In Equation (3.9), the input
+is rt and the output function is βt−1(xt−1)′ft(rt). The aim is to minimize the diﬀerence
+between the two just as in any regression-like model.
+Autoencoders are neural networks which have outputs as close as possible to the inputs
+with an objective of dimensional reduction. The innovation in Gu et al. (2021) is that the
+pure autoencoder part is merged with a vanilla perceptron used to model the loadings. The
+structure of the neural network is summarized below.
+returns (rt)
+NN 1
+− → factors (ft =NN1(rt))
+characteristics (xt−1)
+NN 2
+− → loadings (βt−1 =NN2(xt−1))
+}
+− → returns (rt)
+A simple autoencoder would consist of only the ﬁrst line of the model. This speciﬁcation is
+discussed in more details in Section 7.6.2.
+As a conclusion of this chapter, it appears undeniable that the intersection between the
+two ﬁelds of asset pricing and machine learning oﬀers a rich variety of applications. The
+literature is already exhaustive and it is often hard to disentangle the noise from the great
+ideas in the continuous ﬂow of publications on these topics. Practice and implementation is
+the only way forward to extricate value from hype. This is especially true because agents
+often tend to overestimate the role of factors in the allocation decision process of real-world
+investors (see Chinco et al. (2019b) and Castaneda and Sabat (2019)).
+3.6 Coding exercises
+1. Compute annual returns of the growth versus value portfolios, that is, the average
+return of ﬁrms with above median price-to-book ratio (the variable is called ‘Pb’ in the
+dataset).
+3In the same spirit, see also Lettau and Pelger (2020a) and Lettau and Pelger (2020b).
+
+--- PDF PAGE 55 ---
+36 3 Factor investing and asset pricing anomalies
+2. Same exercise, but compute the monthly returns and plot the value (through time) of
+the corresponding portfolios.
+3. Instead of a unique threshold, compute simply sorted portfolios based on quartiles of
+market capitalization. Compute their annual returns and plot them.
