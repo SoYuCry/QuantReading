@@ -1,0 +1,2691 @@
+
+
+--- PDF PAGE 230 ---
+13
+Interpretability
+This chapter is dedicated to the techniques that help understand the way models pro-
+cess inputs into outputs. A recent book ( Molnar (2019) available at https://christophm.
+github.io/interpretable-ml-book/) is entirely devoted to this topic, and we highly rec-
+ommend to have a look at it. Another more introductory and less technical reference is Hall
+and Gill (2019). Obviously, in this chapter, we will adopt a factor-investing tone and discuss
+examples related to ML models trained on a ﬁnancial dataset.
+Quantitative tools that aim for interpretability of ML models are required to satisfy two
+simple conditions:
+1. Provide information about the model.
+2. Be highly comprehensible.
+Often, these tools generate graphical outputs which are easy to read and yield immediate
+conclusions.
+In attempts to white-box complex machine learning models, one dichotomy stands out:
+• Global models seek to determine the relative role of features in the construction of
+the predictions once the model has been trained. This is done at the global level, so
+that the patterns that are shown in the interpretation hold on average over the whole
+training set.
+• Local models aim to characterize how the model behaves around one particular in-
+stance by considering small variations around this instance. The way these variations
+are processed by the original model allows to simplify it by approximating it, e.g., in a
+linear fashion. This approximation can for example determine the sign and magnitude
+of the impact of each relevant feature in the vicinity of the original instance.
+Molnar (2019) proposes another classiﬁcation of interpretability solutions by splitting in-
+terpretations that depend on one particular model (e.g., linear regression or decision tree)
+versus the interpretations that can be obtained for any kind of model. In the sequel, we
+present the methods according to the global versus local dichotomy.
+13.1 Global interpretations
+13.1.1 Simple models as surrogates
+Let us start with the simplest example of all. In a linear model,
+211
+
+--- PDF PAGE 231 ---
+212 13 Interpretability
+yi =α +
+K∑
+k=1
+βkxk
+i +ϵi,
+the following elements are usually extracted from the estimation of the βk:
+• the R2, which appreciates the global ﬁt of the model (possibly penalized to prevent
+overﬁtting with many regressors). The R2 is usually computed in-sample;
+• the sign of the estimates ˆβk, which indicates the direction of the impact of each feature
+xk on y;
+• thet-statisticst ˆβk
+, which evaluate the magnitude of this impact: regardless of its direc-
+tion, large statistics in absolute value reveal prominent variables. Often, the t-statistics
+are translated into p-values which are computed under some suitable distributional as-
+sumptions.
+The last two indicators are useful because they inform the user on which features matter
+the most and on the sign of the eﬀect of each predictor. This gives a simpliﬁed view of how
+the model processes the features into the output. Most tools that aim to explain black boxes
+follow the same principles.
+Decision trees, because they are easy to picture, are also great models for interpretability.
+Thanks to this favorable feature, they are target benchmarks for simple models. Recently,
+Vidal et al. (2020) propose a method to reduce an ensemble of trees into a unique tree. The
+aim is to propose a simpler model that behaves exactly like the complex one.
+More generally, it is an intuitive idea to resort to simple models to proxy more complex
+algorithms. One simple way to do so is to build so-called surrogate models. The process
+is simple:
+1. train the original model f on features X and labels y;
+2. train a simpler model g to explain the predictions of the trained model ˆf given the
+features X:
+ˆf(X) =g(X) + error
+The estimated model ˆg explains how the initial model ˆf maps the features into the labels.
+The simpler model is a tree with a depth of two.
+new_target = fit_RF.predict(X_short)
+# saving the predictions of tree as new target
+decision_tree_model = tree.DecisionTreeRegressor(max_depth=3)
+# defining the global interpretable tree surrogate model
+TreeSurrogate=decision_tree_model.fit(X_short,new_target)
+# fitting the surrogate
+fig, ax = plt.subplots(figsize=(13, 8))
+# setting the chart parameters
+tree.plot_tree(TreeSurrogate,feature_names=features_short, ax =ax)
+plt.show() # Plot!
+
+--- PDF PAGE 232 ---
+13.1 Global interpretations 213
+FIGURE 13.1: Example of surrogate tree.
+The representation of the tree is quite diﬀerent, compared to those seen in Chapter 6, but
+it managed to do a proper job in capturing the main complexity of the model which it
+mimicks.
+13.1.2 V ariable importance (tree-based)
+One incredibly favorable feature of simple decision trees is their interpretability. Their visual
+representation is clear and straightforward. Just like regressions (which are another building
+block in ML), simple trees are easy to comprehend and do not suﬀer from the black-box
+rebuke that is often associated with more sophisticated tools.
+Indeed, both random forests and boosted trees fail to provide perfectly accurate accounts
+of what is happening inside the engine. In contrast, it is possible to compute the aggregate
+share (or importance) of each feature in the determination of the structure of the tree once
+it has been trained.
+After training, it is possible to compute, at each node n the gain G(n) obtained by the
+subsequent split if there are any, i.e., if the node is not a terminal leaf. It is also easy to
+determine which variable is chosen to perform the split, hence we write Nk the set of nodes
+for which feature k is chosen for the partition. Then, the global importance of each feature
+is given by
+I(k) =
+∑
+n∈Nk
+G(n),
+and it is often rescaled so that the sum of I(k) across all k is equal to one. In this case, I(k)
+measures the relative contribution of feature k in the reduction of loss during the training.
+
+--- PDF PAGE 233 ---
+214 13 Interpretability
+A variable with high importance will have a greater impact on predictions. Generally, these
+variables are those that are located close to the root of the tree.
+Below, we take a look at the results obtained from the tree-based models trained in Chapter
+6. We start by recycling the output from the three regression models we used. Notice that
+each ﬁtted output has its own structure, and importance vectors have diﬀerent names.
+tree_VI = pd.DataFrame(
+data=fit_tree.
+↪→feature_importances_,index=features_short,columns=['Tree'])
+# VI from tree model
+RF_VI = pd.DataFrame(data=fit_RF.feature_importances_,
+index=features_short,columns=['RF'])
+# VI from random forest
+XGB_VI = pd.DataFrame(data=fit_xgb.feature_importances_,
+index=features_short,columns=['XGB'])
+# VI from boosted trees
+VI_trees=pd.concat([tree_VI,RF_VI,XGB_VI],axis=1)
+# Aggregate the VIs
+VI_trees=VI_trees.loc[['Mkt_Cap_12M_Usd'
+'Pb','Vol1Y_Usd']]/np.sum(
+VI_trees.loc[['Mkt_Cap_12M_Usd','Pb','Vol1Y_Usd']])
+VI_trees.plot.bar(figsize=[10,6]) # Plotting sequence
+FIGURE 13.2: Variable importance for tree-based models.
+Given the way the graph is coded, Figure 13.2 is in fact misleading. Indeed, by construction,
+the simple tree model only has a small number of features with non-zero importance: in the
+
+--- PDF PAGE 234 ---
+13.1 Global interpretations 215
+above graph, there are only three: capitalization, price-to-book, and volatility. In contrast,
+because random forest and boosted trees are much more complex, they give some importance
+to many predictors. The graph shows the variables related to the simple tree model only.
+For scale reasons, the normalization is performed after the subset of features is chosen.
+We preferred to limit the number of features shown on the graph for obvious readability
+concerns.
+There are diﬀerences in the way the models rely on the features. For instance, the most
+important feature changes from a model to the other: the simple tree model gives the most
+importance to the price-to-book ratio, while the random forest bets more on volatility and
+boosted trees give more weight to capitalization.
+One deﬁning property of random forests is that they give a chance to all features. Indeed,
+by randomizing the choice of predictors, each individual exogenous variable has a shot
+at explaining the label. Along with boosted trees, the allocation of importance is more
+balanced across predictors, compared to the simple tree which puts most of its eggs in just
+a few baskets.
+13.1.3 V ariable importance (agnostic)
+The idea of quantifying the importance of each feature in the learning process can be
+extended to non-tree-based models. We refer to the papers mentioned in the study by
+Fisher et al. (2019) for more information on this stream of the literature. The premise is the
+same as above: the aim is to quantify to what extent one feature contributes to the learning
+process.
+One way to track the added value of one particular feature is to look at what happens if its
+values inside the training set are entirely shuﬄed. If the original feature plays an important
+role in the explanation of the dependent variable, then the shuﬄed version of the feature
+will lead to a much higher loss.
+The baseline method to assess feature importance in the general case is the following:
+Train the model on the original data and compute the associated loss l∗. For each feature k,
+create a new training dataset in which the feature’s values are randomly permuted. Then,
+evaluate the loss lk of the model based on this altered sample. Rank the variable importance
+of each feature, computed as a diﬀerence VI k =lk −l∗ or a ratio VI k =lk/l∗.
+Whether to compute the losses on the training set or the testing set is an open question and
+remains to the appreciation of the analyst. The above procedure is of course random and
+can be repeated so that the importances are averaged over several trials: this improves the
+stability of the results. This algorithm is implemented in the FeatureImp() function of the
+iml R package developed by Molnar (2019). Below, we implement this algorithm manually
+in Python so to speak for the features appearing in Figure 13.2. We test this approach on
+ridge regressions and recycle the variables used in Chapter 5. We start by the ﬁrst step:
+computing the loss on the original training sample.
+import random
+y_penalized = data_ml['R1M_Usd'].values # Dependent variable
+X_penalized = data_ml[features].values # Predictors
+fit_ridge_0 = Ridge(alpha=0.01) # Trained model
+fit_ridge_0.fit(X_penalized_train, y_penalized_train) # Fit model
+
+--- PDF PAGE 235 ---
+216 13 Interpretability
+l_star= np.mean(np.square(
+fit_ridge_0.predict(X_penalized_train)-y_penalized_train))# Loss
+Next, we evaluate the loss when each of the predictors has been sequentially shuﬄed. To
+reduce computation time, we only make one round of shuﬄing.
+from collections import Counter
+res = [] # Initialize
+feature_random = random.sample(
+list((Counter(features)-Counter(features_short)).elements()), 12)
+# selecting fewer features for computation time sake
+for feat in (features_short+feature_random):
+# Loop on the features
+temp_data=training_sample[features].copy()
+# temp dataframe for all features
+temp_data.loc[:,feat] = np.random.permutation(training_sample[feat])
+# shuffling for feat[i]
+fit_ridge_0.fit(temp_data[features], training_sample[ 'R1M_Usd'])
+# fitting the model
+result_VI=pd.DataFrame([feat],columns=['feat'])
+result_VI['loss']=[np.mean(
+np.square(fit_ridge_0.predict(
+temp_data[features])-training_sample['R1M_Usd'])) - l_star]
+# Loss
+res.append(result_VI)
+# appending through features loop
+res = pd.concat(res)
+res.set_index('feat',inplace=True)
+Finally, we plot the results.
+res.plot.bar(figsize=[10,6])
+The resulting importances are in line with thoses of the tree-based models: the most promi-
+nent variables are volatility-based, market capitalization-based, and the price-to-book ratio;
+these closely match the variables from Figure 13.2 . Note that in some cases (e.g., the share
+turnover), the score can even be negative, which means that the predictions are more accu-
+rate than the baseline model when the values of the predictor are shuﬄed!
+13.1.4 Partial dependence plot
+Partial dependence plots (PDPs) aim at showing the relationship between the output of a
+model and the value of a feature (we refer to section 8.2 of Friedman (2001) for an early
+treatment of this subject).
+Let us ﬁx a feature k. We want to understand the average impact ofk on the predictions
+of the trained model ˆf . In order to do so, we assume that the feature space is random
+and we split it in two: k versus −k, which stands for all features except for k. The partial
+dependence plot is deﬁned as
+
+--- PDF PAGE 236 ---
+13.1 Global interpretations 217
+FIGURE 13.3: Variable importance for a ridge regression model.
+¯f k(x k)= E[ ˆf (x−k,x k)] =
+∫
+ˆf (x−k,x k)dP−k(x−k), (13.1)
+where dP−k(·) is the (multivariate) distribution of the non-k features x−k. The above func-
+tion takes the feature values x k as argument and keeps all other features frozen via their
+sample distributions: this shows the impact of feature k solely. In practice, the average is
+evaluated using Monte-Carlo simulations:
+¯f k(x k) ≈ 1
+M
+M∑
+m=1
+ˆf
+(
+x k, x(m)
+−k
+)
+, (13.2)
+where x(m)
+−k are independent samples of the non- k features.
+Theoretically, PDPs could be computed for more than one feature at a time. In practice,
+this is only possible for two features (yielding a 3D surface) and is more computationally
+intense.
+The model we seek to explain is the random forest built in Section 6.2 . We recycle some
+variables used therein. We choose to test the impact of the price-to-book ratio on the
+outcome of the model.
+from sklearn.inspection import PartialDependenceDisplay
+PartialDependenceDisplay.from_estimator(
+fit_RF,training_sample[features_short], ['Pb'],kind='average')
+The average impact of the price-to-book ratio on the predictions is decreasing. This was
+
+--- PDF PAGE 237 ---
+218 13 Interpretability
+FIGURE 13.4: Partial dependence plot for the price-to-book ratio on the random forest
+model.
+somewhat expected, given the conditional average of the dependent variable given the price-
+to-book ratio. This latter function is depicted in Figure 6.3 and shows a behavior comparable
+to the above curve: strongly decreasing for small value of P/B and then relatively ﬂat. When
+the price-to-book ratio is low, ﬁrms are undervalued. Hence, their higher returns are in line
+with the value premium.
+Finally, we refer to Zhao and Hastie (2021) for a theoretical discussion on the causality
+property of PDPs. Indeed, a deep look at the construction of the PDPs suggests that they
+could be interpreted as a causal representation of the feature on the model’s output.
+13.2 Local interpretations
+Whereas global interpretations seek to assess the impact of features on the output overall ,
+local methods try to quantify the behavior of the model on particular instances or the
+neighborhood thereof. Local interpretability has recently gained traction, and many papers
+have been published on this topic. Below, we outline the most widespread methods.
+1
+13.2.1 LIME
+LIME (Local Interpretable Model-Agnostic Explanations) is a methodology originally pro-
+posed by Ribeiro et al. (2016). Their aim is to provide a faithful account of the model under
+two constraints:
+• simple interpretability , which implies a limited number of variables with visual or
+textual representation. This is to make sure any human can easily understand the out-
+come of the tool;
+• local faithfulness: the explanation holds for the vicinity of the instance.
+1For instance, we do not mention the work of Horel and Giesecke (2019), but the interested reader can
+have a look at their work on neural networks (and also at the references cited in the paper).
+
+--- PDF PAGE 238 ---
+13.2 Local interpretations 219
+The original (black-box) model is f , and we assume we want to approximate its behavior
+around instancex with the interpretable model g.2 The simple function g belongs to a larger
+classG. The vicinity of x is denoted πx and the complexity of g is written Ω(g). LIME seeks
+an interpretation of the form
+ξ(x) = argmin
+g∈G
+L(f,g,π x) + Ω(g),
+where L(f,g,π x) is the loss function (error/imprecision) induced by g in the vicinity πx
+of x. The penalization Ω(g) is for instance the number of leaves or depth of a tree, or the
+number of predictors in a linear regression.
+It now remains to deﬁne some of the above terms. The vicinity of x is deﬁned by πx(z) =
+e−D(x,z)2/σ2
+, whereD is some distance measure and σ2 some scaling constant. We underline
+that this function decreases when z shifts away from x.
+The tricky part is the loss function. In order to minimize it, LIME generates artiﬁcial samples
+close to x and averages/sums the error on the label that the simple representation makes.
+For simplicity, we assume a scalar output for f , hence the formulation is the following:
+L(f,g,π x) =
+∑
+z
+πx(z)(f(z) −g(z))2
+and the errors are weighted according to their distance from the initial instance x: the
+closest points get the largest weights. In its most basic implementation, the set of models
+G consists of all linear models.
+In Figure 13.5, we provide a simpliﬁed diagram of how LIME works.
+For expositional clarity, we work with only one dependent variable. The original training
+sample is shown with the black points. The ﬁtted (trained) model is represented with the
+blue line (smoothed conditional average), and we want to approximate how the model works
+around one particular instance which is highlighted by the red square around it. In order to
+build the approximation, we sample ﬁve new points around the instance (ﬁve red triangles).
+Each triangle lies on the blue line (they are model predictions) and has a weight proportional
+to its size: the triangle closest to the instance has a bigger weight. Using weighted least-
+squares, we build a linear model that ﬁts to these ﬁve points (dashed grey line). This is the
+outcome of the approximation. It gives the two parameters of the model: the intercept and
+the slope. Both can be evaluated with standard statistical tests.
+The sign of the slope is important. It is fairly clear that if the instance had been taken
+closer to x = 0, the slope would have probably been almost ﬂat and hence the predictor
+could be locally discarded. Another important detail is the number of sample points. In our
+explanation, we take only ﬁve, but in practice, a robust estimation usually requires around
+1000 points or more. Indeed, when too few neighbors are sampled, the estimation risk is
+high and the approximation may be rough.
+2In the original paper, the authors dig deeper into the notion of interpretable representations. In complex
+machine learning settings (image recognition or natural language processing), the original features given to
+the model can be hard to interpret. Hence, this requires an additional translation layer because the outcome
+of LIME must be expressed in terms of easily understood quantities. In factor investing, the features are
+elementary, hence we do not need to deal with this issue).
+
+--- PDF PAGE 239 ---
+220 13 Interpretability
+●
+●
+●●
+●
+●●
+●
+● ●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ● ●
+●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●
+●●
+●
+●
+●
+●●●
+●
+●
+●●
+●
+-3
+-2
+-1
+0
+1
+2
+-1.5 -1.0 -0.5 0.0 0.5 1.0x
+y
+FIGURE 13.5: Simplistic explanation of LIME: the explained instance is surrounded by
+a red square. Five points are generated ( triangles) and a weighted linear model is ﬁtted
+accordingly (dashed grey line).
+We proceed with an example of implementation. There are several steps:
+1. Fit a model on some training data.
+2. Wrap everything using the LIME functions.
+3. Focus on a few predictors and see their impact over a few particular instances.
+We start with the ﬁrst step. This time, we work with a boosted tree model.
+import lime # Package for LIME interpretation
+import lime.lime_tabular
+xgb_model = xgboost.XGBRegressor(# Parameters of the boosted tree
+max_depth=5, # Max depth of each tree
+learning_rate=0.5, # Learning rate
+objective='reg:squarederror',# booster type of objective function
+subsample=1, # Proportion of instance to be sampled /uni2423
+↪→(1=all)
+colsample_bytree=1, # Proportion of predictors to be sampled /uni2423
+↪→(1=all)
+gamma=0.1, # Penalization
+n_estimators=10, # Number of trees
+min_child_weight=10) # Min number of instances in each node
+
+--- PDF PAGE 240 ---
+13.2 Local interpretations 221
+xgb_model.fit(train_features_xgb, train_label_xgb) # Training of the /uni2423
+↪→model
+XGBRegressor(base_score=0.5, booster= 'gbtree', callbacks=None,
+colsample_bylevel=1, colsample_bynode=1, colsample_bytree=1,
+early_stopping_rounds=None, enable_categorical=False,
+eval_metric=None, feature_types=None, gamma=0.1, gpu_id=-1,
+grow_policy='depthwise', importance_type=None,
+interaction_constraints='', learning_rate=0.5, max_bin=256,
+max_cat_threshold=64, max_cat_to_onehot=4, max_delta_step=0,
+max_depth=5, max_leaves=0, min_child_weight=10, missing=nan,
+monotone_constraints='()', n_estimators=10, n_jobs=0,
+num_parallel_tree=1, predictor= 'auto', random_state=0, ...)
+Then, we head on to steps 2 and 3.
+explainer = lime.lime_tabular.LimeTabularExplainer(
+train_features_xgb.values,
+# values in tabular i.e. Matrix
+mode='regression',
+# “classification” or “regression”
+feature_names=train_features_xgb.columns,
+verbose=1)
+# if true, print local prediction values from linear model
+exp = explainer.explain_instance(train_features_xgb.iloc[0,:].values,
+# First instance in train_sample
+predict_fn=xgb_model.predict,
+# prediction function
+labels=train_label_xgb.iloc[0].values,
+# iterable with labels to be explained
+distance_metric='euclidean',
+# Dist.func. "gower" is one alternative
+num_samples=900,
+# Nb of features shown (important ones)
+exp.show_in_notebook(show_table=True)
+# Visual display
+
+
+--- PDF PAGE 241 ---
+222 13 Interpretability
+In each graph (one graph corresponds to the explanation around one instance), there are
+two types of information: the sign of the impact and the magnitude of the impact. The sign
+is revealed with the color (positive in orange, negative in blue), and the magnitude is shown
+with the size of the rectangles.
+The values to the left of the graphs show the ranges of the features with which the local
+approximations were computed.
+Lastly, we brieﬂy discuss the choice of distance function chosen in the code. It is used to
+evaluate the discrepancy between the true instance and a simulated one to give more or
+less weight to the prediction of the sampled instance. Our dataset comprises only numerical
+data; hence, the Euclidean distance is a natural choice:
+Euclidean(x, y) =
+√
+N∑
+n=1
+(xi −yi)2.
+Another possible choice would be the Manhattan distance:
+Manhattan(x, y) =
+N∑
+n=1
+|xi −yi|.
+The problem with these two distances is that they fail to handle categorical variables. This
+is where the Gower distance steps in (Gower (1971)). The distance imposes a diﬀerent treat-
+ment on features of diﬀerent types (classes versus numbers essentially, but it can also handle
+missing data!). For categorical features, the Gower distance applies a binary treatment: the
+value is equal to 1 if the features are equal, and to zero if not (i.e., 1{xn=yn}). For numerical
+features, the spread is quantiﬁed as 1 −|xn−yn|
+Rn
+, where Rn is the maximum absolute value
+the feature can take. All similarity measurements are then aggregated to yield the ﬁnal
+score. Note that in this case, the logic is reversed: x and y are very close if the Gower
+distance is close to one, and they are far away if the distance is close to zero.
+13.2.2 Shapley values
+The approach of Shapley values is somewhat diﬀerent compared to LIME and closer in
+spirit to PDPs. It originates from cooperative game theory ( Shapley (1953)). The rationale
+is the following. One way to assess the impact (or usefulness) of a variable is to look at
+what happens if we remove this variable from the dataset. If this is very detrimental to the
+quality of the model (i.e., to the accuracy of its predictions), then it means that the variable
+is substantially valuable.
+The simplest way to proceed is to take all variables and remove one to evaluate its predictive
+ability. Shapley values are computed on a larger scale because they consider all possible
+combinations of variables to which they add the target predictor. Formally, this gives:
+φk =
+∑
+S⊆{x1,...,xK}\xk
+Card(S)!(K − Card(S) − 1)!
+K!  
+weight of coalition
+(
+ˆfS∪{xk}(S ∪ {xk}) − ˆfS(S)
+)
+  
+gain when adding xk
+(13.3)
+
+--- PDF PAGE 242 ---
+13.2 Local interpretations 223
+S is any subset of the coalition that doesn’t include feature k, and its size is Card( S).
+In the equation above, the model f must be altered because it’s impossible to evaluate f
+when features are missing. In this case, there are several possible options:
+• set the missing value to its average or median value (in the whole sample) so that its
+eﬀect is some ‘average’ eﬀect;
+• directly compute an average value
+∫
+Rf(x1,...,x k,...,x K)dPxk , where dPxk is the em-
+pirical distribution of xk in the sample.
+Obviously, Shapley values can take a lot of time to compute if the number of predictors is
+large. We refer to Chen et al. (2018) for a discussion on a simplifying method that reduces
+computation times in this case. Extensions of Shapley values for interpretability are studied
+in Lundberg and Lee (2017).
+There are two restrictions compared to LIME. First, the features must be ﬁltered upfront
+because all features are shown on the graph (which becomes illegible beyond 20 features).
+This is why in the code below, we use the short list of predictors (from Section 1.2). Second,
+instances are analyzed one at a time.
+We start by ﬁtting a random forest model.
+fit_RF_short = RandomForestRegressor(
+n_estimators=40,
+# Nb of random trees
+criterion='squared_error',
+# function to measure the quality of a split
+min_samples_leaf=250,
+# Minimum size of terminal cluster
+max_features=4,
+# Nb of predictive variables for each tree
+bootstrap=True,
+# No replacement
+max_samples=10000)
+# Size of (random) sample for each tree
+fit_RF_short.fit(training_sample[features_short],
+training_sample['R1M_Usd'].values)
+# fitting the model
+We can then analyze the behavior of the model around the ﬁrst instance of the training
+sample.
+import shap
+explainer = shap.explainers.Exact(fit_RF_short.predict,
+# Compute the Shapley values...
+training_sample[features_short].values,
+# Training data
+feature_names=features_short)
+# features names, could be passed by the predictor fn as well
+shap_values = explainer(training_sample[features_short].values[:1,])
+# On the first instance
+
+--- PDF PAGE 243 ---
+224 13 Interpretability
+shap.plots.bar(shap_values[0])
+# Visual display
+FIGURE 13.6: Illustration of the Shapley method.
+In the output shown in Figure 13.6, we again obtain the two crucial insights: sign of the
+impact of the feature and relative importance (compared to other features).
+13.2.3 Breakdown
+Breakdown (see, e.g., Staniak and Biecek (2018)) is a mixture of ideas from PDPs and
+Shapley values. The core of breakdown is the so-called relaxed model prediction deﬁned
+in Equation (13.4). It is close in spirit to Equation ( 13.1). The diﬀerence is that we are
+working at the local level, i.e., on one particular observation, say x ∗. We want to measure
+the impact of a set of predictors on the prediction associated to x ∗; hence, we ﬁx two sets
+k (ﬁxed features) and −k (free features) and evaluate a proxy for the average prediction
+of the estimated model ˆf when the set k of predictors is ﬁxed at the values of x ∗, that is,
+equal to x ∗
+k in the expression below:
+˜f k(x ∗)= 1
+M
+M∑
+m=1
+ˆf
+(
+x (m)
+−k ,x ∗
+k
+)
+. (13.4)
+The x (m) in the above expression are either simulated values of instances or simply sampled
+values from the dataset. The notation implies that the instance has some values replaced by
+those of x ∗, namely those that correspond to the indices k. When k consists of all features,
+then ˜f k(x ∗) is equal to the raw model prediction ˆf (x ∗) and when k is empty, it is equal to
+the average sample value of the label (constant prediction).
+
+--- PDF PAGE 244 ---
+13.2 Local interpretations 225
+The quantity of interest is the so-called contribution of feature j/ ∈ k with respect to data
+point x ∗ and set k:
+φj
+k(x ∗)= ˜f k∪j (x ∗) − ˜f k(x ∗).
+Just as for Shapley values, the above indicator computes an average impact when augment-
+ing the set of predictors with feature j . By deﬁnition, it depends on the set k, so this is
+one notable diﬀerence with Shapley values (that span all permutations). In Staniak and
+Biecek (2018), the authors devise a procedure that incrementally increases or decreases the
+set k. This greedy idea helps alleviate the burden of computing all possible combinations
+of features. Moreover, a very convenient property of their algorithm is that the sum of all
+contributions is equal to the predicted value:
+∑
+j
+φj
+k(x ∗)= f (x ∗).
+The visualization makes that very easy to see (as in Figure 13.7 below).
+In order to illustrate one implementation of breakdown, we train a random forest on a
+limited number of features, as shown below. This will increase the readability of the output
+of the breakdown.
+fit_RF_short = RandomForestRegressor(
+n_estimators=12,
+# Nb of random trees
+criterion='squared_error',
+# function to measure the quality of a split
+min_samples_leaf=250,
+# Minimum size of terminal cluster
+max_features=4,
+# Nb of predictive variables for each tree
+bootstrap=True,
+# No replacement
+max_samples=10000)
+# Size of (random) sample for each tree
+fit_RF_short.fit(
+training_sample[features_short],training_sample['R1M_Usd'].values)
+# fitting the model
+RandomForestRegressor(max_features=4, max_samples=10000,
+min_samples_leaf=250,n_estimators=12)
+Once the model is trained, the syntax for the breakdown of predictions is very simple.
+import dalex as dx # Module for former breakdown package (initially in R)
+ex = dx.Explainer( # Creating the explainer
+model=fit_RF_short,
+# prediction function
+data=training_sample[features_short],
+
+--- PDF PAGE 245 ---
+226 13 Interpretability
+y=training_sample['R1M_Usd'].values,
+label='fit_RF_short')
+instance=pd.DataFrame(training_sample.loc[0,features_short]).T
+# Transpose to adapt to requiered format
+pp=ex.predict_parts(instance, type='break_down')
+# Compute the breakdown
+pp.plot() # Visual display
+FIGURE 13.7: Example of a breakdown output.
+The graphical output is intuitively interpreted. The grey bar is the prediction of the model
+at the chosen instance. Green bars signal a positive contribution, and the red rectangles
+show the variables with negative impact. The relative sizes indicate the importance of each
+feature.
+
+--- PDF PAGE 246 ---
+14
+Two key concepts: causality and non-stationarity
+A prominent point of criticism faced by ML tools is their inability to uncover causality
+relationships between features and labels because they are mostly focused (by design) to
+capture correlations. Correlations are much weaker than causality because they characterize
+a two-way relationship ( X ↔ y), while causality speciﬁes a direction X → y or X ← y.
+One fashionable example is sentiment. Many academic articles seem to ﬁnd that sentiment
+(irrespectively of its deﬁnition) is a signiﬁcant driver of future returns. A high sentiment
+for a particular stock may increase the demand for this stock and push its price up (though
+contrarian reasonings may also apply: if sentiment is high, it is a sign that mean-reversion
+is possibly about to happen). The reverse causation is also plausible: returns may well
+cause sentiment. If a stock experiences a long period of market growth, people become
+bullish about this stock and sentiment increases (this notably comes from extrapolation,
+see Barberis et al. (2015) for a theoretical model). In Coqueret (2020), it is found (in
+opposition to most ﬁndings in this ﬁeld), that the latter relationship (returns → sentiment)
+is more likely. This result is backed by causality driven tests (see Section 14.1.1).
+Statistical causality is a large ﬁeld, and we refer to Pearl (2009) for a deep dive into this
+topic. Recently, researchers have sought to link causality with ML approaches (see, e.g.,
+Peters et al. (2017), Heinze-Deml et al. (2018),and Arjovsky et al. (2019)). The key notion
+in their work is invariance.
+Often, data is collected not at once, but from diﬀerent sources at diﬀerent moments. Some
+relationships found in these diﬀerent sources will change, while others may remain the same.
+The relationships that are invariant to changing environments are likely to stem from
+(and signal) causality. One counter-example is the following (related in Beery et al. (2018)):
+training a computer vision algorithm to discriminate between cows and camels will lead the
+algorithm to focus on grass versus sand! This is because most camels are pictured in the
+desert, while cows are shown in green ﬁelds of grass. Thus, a picture of a camel on grass will
+be classiﬁed as cow, while a cow on sand would be labelled “camel”. It is only with pictures
+of these two animals in diﬀerent contexts (environments) that the learner will end up truly
+ﬁnding what makes a cow and a camel. A camel will remain a camel no matter where it
+is pictured: it should be recognized as such by the learner. If so, the representation of the
+camel becomes invariant over all datasets, and the learner has discovered causality, i.e., the
+true attributes that make the camel a camel (overall silhouette, shape of the back, face,
+color (possibly misleading!), etc.).
+This search for invariance makes sense for many disciplines like computer vision or natural
+language processing (cats will always look like cats and languages don’t change much). In
+ﬁnance, it is not obvious that invariance may exist. Market conditions are known to be
+time-varying, and the relationships between ﬁrm characteristics and returns also change
+from year to year. One solution to this issue may simply be to embrace non-stationarity
+(see Section 1.1 for a deﬁnition of stationarity). In Chapter 12, we advocate to do that
+by updating models as frequently as possible with rolling training sets: this allows the
+227
+
+--- PDF PAGE 247 ---
+228 14 Two key concepts: causality and non-stationarity
+predictions to be based on the most recent trends. In Section 14.2 below, we introduce
+other theoretical and practical options.
+14.1 Causality
+Traditional machine learning models aim to uncover relationships between variables but
+do not usually specify directions for these relationships. One typical example is the linear
+regression. If we write y = a +bx +ϵ, then it is also true that x = b−1(y −a −ϵ), which
+is of course also a linear relationship (with respect to y). These equations do not deﬁne
+causation whereby x would be a clear determinant of y (x →y, but the opposite could be
+false).
+14.1.1 Granger causality
+The most notable tool ﬁrst proposed by Granger (1969) is probably the simplest. For sim-
+plicity, we consider only two stationary processes, Xt andYt. A strict deﬁnition of causality
+could be the following. X can be said to cause Y , whenever, for some integer k,
+(Yt+1,...,Y t+k)|(FY,t ∪ FX,t)
+d
+̸= ( Yt+1,...,Y t+k)|FY,t,
+that is, when the distribution of future values of Yt, conditionally on the knowledge of both
+processes is not the same as the distribution with the sole knowledge of the ﬁltration FY,t.
+Hence X does have an impact on Y because its trajectory alters that of Y .
+Now, this formulation is too vague and impossible to handle numerically, thus we simplify
+the setting via a linear formulation. We keep the same notations as section 5 of the original
+paper by Granger (1969). The test consists of two regressions:
+Xt =
+m∑
+j=1
+ajXt−j +
+m∑
+j=1
+bjYt−j +ϵt
+Yt =
+m∑
+j=1
+cjXt−j +
+m∑
+j=1
+djYt−j +νt
+where, for simplicity, it is assumed that both processes have zero mean. The usual assump-
+tions apply: the Gaussian noises ϵt andνt are uncorrelated in every possible way (mutually
+and through time). The test is the following: if one bj is non-zero, then it is said that Y
+Granger-causesX, and if one cj is non-zero, X Granger-causesY . The two are not mutually
+exclusive and it is widely accepted that feedback loops can very well occur.
+Statistically, under the null hypothesis, b1 = · · · =bm = 0 (resp.c1 = · · · =cm = 0), which
+can be tested using the usual Fischer distribution. Obviously, the linear restriction can be
+dismissed, but the tests are then much more complex. The main ﬁnancial article in this
+direction is Hiemstra and Jones (1994).
+We test if market capitalization averaged over the past 6 months Granger-causes 1-month
+ahead returns for one particular stock (the ﬁrst in the sample).
+
+--- PDF PAGE 248 ---
+14.1 Causality 229
+from statsmodels.tsa.stattools import grangercausalitytests
+granger = training_sample.loc[training_sample["stock_id"]==1,
+# X variable = stock nb 1
+["R1M_Usd",
+# Y variable = stock nb 1
+"Mkt_Cap_6M_Usd"]]
+# & Market cap
+fit_granger = grangercausalitytests(granger,maxlag=[6],verbose=True)
+# Maximum lag
+Granger Causality
+number of lags (no zero) 6
+ssr based F test: F=4.1110 , p=0.0008 , df_denom=149, df_num=6
+ssr based chi2 test: chi2=26.8179 , p=0.0002 , df=6
+likelihood ratio test: chi2=24.8162 , p=0.0004 , df=6
+parameter F test: F=4.1110 , p=0.0008 , df_denom=149, df_num=6
+The test is directional and only tests if X Granger-causes Y . In order to test the reverse
+eﬀect, it is required to inverse the arguments in the function. In the output above, the p-
+value is very low, hence the probability of observing samples similar to ours knowing that H0
+holds is negligible. Thus it seems that market capitalization does Granger-cause one-month
+returns. We nonetheless underline that Granger causality is arguably weaker than the one
+deﬁned in the next subsection. A process that Granger-causes another one simply contains
+useful predictive information, which is not proof of causality in a strict sense. Moreover,
+our test is limited to a linear model and including non-linearities may alter the conclusion.
+Lastly, including other regressors (possibly omitted variables) could also change the results
+(see, e.g., Chow et al. (2002)).
+14.1.2 Causal additive models
+The zoo of causal model encompasses a variety of beasts (even BARTs from Section 9.5 are
+used for this purpose in Hahn et al. (2019)). The interested reader can have a peek at Pearl
+(2009), Peters et al. (2017), Maathuis et al. (2018) and Hünermund and Bareinboim (2019)
+and the references therein. One central tool in causal models is the do-calculus developed
+by Pearl. Whereas traditional probabilities P [Y |X] link the odds of Y conditionally on
+observing X take some value x, the do( ·) forces X to take value x. This is a looking
+versus doing dichotomy. One classical example is the following. Observing a barometer
+gives a clue what the weather will be because high pressures are more often associated with
+sunny days:
+P [sunny weather|barometer says “high” ]>P [sunny weather|barometer says “low” ],
+but if you hack the barometer (force it to display some value),
+P [sunny weather|barometer hacked to “high” ] =P [sunny weather|barometer hacked “low” ],
+because hacking the barometer will have no impact on the weather. In short notation, when
+there is an intervention on the barometer, P [weather|do(barometer)] =P [weather]. This is
+an interesting example related to causality. The overarching variable is pressure. Pressure
+impacts both the weather and the barometer, and this joint eﬀect is called confounding.
+However, it may not be true that the barometer impacts the weather. The interested reader
+
+--- PDF PAGE 249 ---
+230 14 Two key concepts: causality and non-stationarity
+who wants to dive deeper into these concepts should have a closer look at the work of Judea
+Pearl. Do-calculus is a very powerful theoretical framework, but it is not easy to apply it
+to any situation or dataset (see for instance the book review by Aronow and Sävje (2019)).
+While we do not formally present an exhaustive tour of the theory behind causal inference,
+we wish to show some practical implementations because they are easy to interpret. It
+is always hard to single out one type of model in particular, so we choose one that can
+be explained with simple mathematical tools. We start with the simplest deﬁnition of a
+structural causal model (SCM), where we follow here chapter 3 of Peters et al. (2017). The
+idea behind these models is to introduce some hierarchy (i.e., some additional structure) in
+the model. Formally, this gives
+X =ϵX
+Y =f(X,ϵY ),
+where the ϵX and ϵY are independent noise variables. Plainly, a realization of X is drawn
+randomly and has then an impact on the realization of Y via f . Now this scheme could
+be more complex if the number of observed variables was larger. Imagine a third variable
+comes in so that
+X =ϵX
+Y =f(X,ϵY ),
+Z =g(Y,ϵZ)
+In this case, X has a causation eﬀect on Y , and then Y has a causation eﬀect on Z. We
+thus have the following connections:
+X
+↘
+Y → Z.
+↗ ↗
+ϵY ϵZ
+The above representation is called a graph, and graph theory has its own nomenclature,
+which we very brieﬂy summarize. The variables are often referred to as vertices (or nodes)
+and the arrows as edges. Because arrows have a direction, they are called directed edges.
+When two vertices are connected via an edge, they are called adjacent. A sequence of
+adjacent vertices is called a path, and it is directed if all edges are arrows. Within a directed
+path, a vertex that comes ﬁrst is a parent node and the one just after is a child node.
+Graphs can be summarized by adjacency matrices. An adjacency matrix A = Aij is a
+matrix ﬁlled with zeros and ones. Aij = 1 whenever there is an edge from vertex i to vertex
+j. Usually, self-loops ( X → X) are prohibited so that adjacency matrices have zeros on
+the diagonal. If we consider a simpliﬁed version of the above graph like X →Y →Z, the
+corresponding adjacency matrix is
+A =
+
+
+0 1 0
+0 0 1
+0 0 0
+
+.
+
+--- PDF PAGE 250 ---
+14.1 Causality 231
+where letters X , Y , and Z are naturally ordered alphabetically. There are only two arrows:
+from X to Y (ﬁrst row, second column) and from Y to Z (second row, third column).
+A cycle is a particular type of path that creates a loop, i.e., when the ﬁrst vertex is also
+the last. The sequence X → Y → Z → X is a cycle. Technically, cycles pose problems.
+To illustrate this, consider the simple sequence X → Y → X . This would imply that a
+realization of X causes Y , which in turn would cause the realization of Y . While Granger
+causality can be viewed as allowing this kind of connection, general causal models usually
+avoid cycles and work with directed acyclic graphs (DAGs).
+Equipped with these tools, we can explicitize a very general form of models:
+X j = f j
+(
+XpaD (j),ϵ j
+)
+, (14.1)
+where the noise variables are mutually independent. The notation pa D (j ) refers to the set
+of parent nodes of vertex j within the graph structure D. Hence, X j is a function of all of
+its parents and some noise term ϵj . An additive causal model is a mild simpliﬁcation of the
+above speciﬁcation:
+X j =
+∑
+k∈paD (j)
+f j,k (Xk)+ ϵj , (14.2)
+where the non-linear eﬀect of each variable is cumulative, hence the term ‘ additive’. Note
+that there is no time index there. In contrast to Granger causality, there is no natural
+ordering. Such models are very complex and hard to estimate. The details can be found in
+Bühlmann et al. (2014).
+Below, we build the adjacency matrix pertaining to the small set of predictor variables plus
+the one-month ahead return (on the training sample). Below, we test the ICPy package.
+import icpy as icpy
+B=training_sample[['Mkt_Cap_12M_Usd','Vol1Y_Usd']].values
+# Node B1 and B2
+C=training_sample['R1M_Usd'].values
+# Node C
+ExpInd=np.round(np.random.uniform(size=training_sample.shape[0]))
+# "Environment"
+icpy.invariant_causal_prediction(X=B,y=C,z=ExpInd,alpha=0.1)
+# test if A or B are parents of C
+ICP(S_hat=array([0, 1], dtype=int64), q_values=array([1.34146064e-215,
+1.34146064e-215]), p_value=1.341460638715696e-215)
+The matrix is not too sparse, which means that the model has uncovered many relationships
+between the variables within the sample. Sadly, none are in the direction that is of interest
+for the prediction task that we seek. Indeed, the ﬁrst variable is the one we want to predict
+and its column is empty. However, its row is full, which indicates the reverse eﬀect: future
+returns cause the predictor values, which may seem rather counter-intuitive, given the nature
+of features.
+For the sake of completeness, we also provide an implementation of Python version of the
+pcalg package (Kalisch et al. (2012)). Below, an estimation via the so-called PC (named after
+
+--- PDF PAGE 251 ---
+232 14 Two key concepts: causality and non-stationarity
+its authors Peter Spirtes and Clark Glymour) is performed. The details of the algorithm
+are out of the scope of the book, and the interested reader can have a look at section 5.4
+of Spirtes et al. (2000) or section 2 from Kalisch et al. (2012) for more information on this
+subject.
+import cdt
+import networkx as nx
+data_caus = training_sample[features_short+["R1M_Usd"]]
+dm = np.array(data_caus)
+cm = np.corrcoef(dm.T)# Compute correlations
+df=pd.DataFrame(cm)
+glasso = cdt.independence.graph.Glasso()
+# intialize graph lasso
+skeleton = glasso.predict(df)
+# apply graph lasso to dataset
+model_pc = cdt.causality.graph.PC()
+# PC algo. from pcalg R library
+graph_pc = model_pc.predict(df, skeleton)
+# Estimate model
+fig=plt.figure(figsize=[10,6])
+nx.draw_networkx(model_pc)
+# Plot model
+FIGURE 14.1: Representation of a directed graph.
+A bidirectional arrow is shown when the model was unable to determine the edge orientation.
+While the adjacency matrix is diﬀerent compared to the ﬁrst model, there are still no
+predictors that seem to have a clear causal eﬀect on the dependent variable (ﬁrst circle).
+
+--- PDF PAGE 252 ---
+14.1 Causality 233
+14.1.3 Structural time series models
+We end the topic of causality by mentioning a particular type of structural models: struc-
+tural time series . Because we illustrate their relevance for a particular kind of causal
+inference, we closely follow the notations of Brodersen et al. (2015). The model is driven by
+two equations:
+yt = Z′
+tαt +ϵt
+αt+1 = Ttαt + Rtηt.
+The dependent variable is expressed as a linear function of state variables αt plus an error
+term. These variables are in turn linear functions of their past values plus another error
+term which can have a complex structure (it’s a product of a matrix Rt with a centered
+Gaussian term ηt). This speciﬁcation nests many models as special cases, like ARIMA for
+instance.
+The goal of Brodersen et al. (2015) is to detect causal impacts via regime changes. They
+estimate the above model over a given training period and then predict the model’s response
+on some test set. If the aggregate (summed/integrated) error between the realized versus
+predicted values is signiﬁcant (based on some statistical test), then the authors conclude
+that the breaking point is relevant. Originally, the aim of the approach is to quantify the
+eﬀect of an intervention by looking at how a model trained before the intervention behaves
+after the intervention.
+Below, we test if the 100th date point in the sample (April 2008) is a turning point. Arguably,
+this date belongs to the time span of the subprime ﬁnancial crisis. We use the CausalImpact
+module, Python version.
+The time series associated with the model are shown in Figure 14.2.
+from causalimpact import CausalImpact
+stock1_data = data_ml.loc[data_ml["stock_id"]==1, :]
+# Data of first stock
+struct_data = stock1_data[["Advt_3M_Usd"]+features_short]
+# Combine label and features
+struct_data.index = pd.RangeIndex(start=0, stop=228, step =1)
+# Setting index as int
+pre_period = [0, 99]
+# Pre-break period (pre-2008)
+post_period = [100, 199]
+# Post-break period
+impact = CausalImpact(struct_data, pre_period, post_period)
+# Causal model created
+impact.run() # run!
+print(impact.summary()) # Summary analysis
+impact.plot() # Plot!
+
+--- PDF PAGE 253 ---
+234 14 Two key concepts: causality and non-stationarity
+FIGURE 14.2: Output of the causal impact study.
+14.2 Dealing with changing environments
+The most common assumption in machine learning contributions is that the samples that
+are studied are i.i.d. realizations of a phenomenon that we are trying to characterize. This
+constraint is natural because if the relationship between X and y always changes, then it
+is very hard to infer anything from observations. One major problem in Finance is that
+this is often the case: markets, behaviors, policies, etc., evolve all the time. This is at least
+partly related to the notion of absence of arbitrage: if a trading strategy worked all the time,
+all agents would eventually adopt it via herding, which would annihilate the corresponding
+gains.1 If the strategy is kept private, its holder would become inﬁnitely rich, which obviously
+has never happened.
+There are several ways to deﬁne changes in environments. If we denote with PXY the
+multivariate distribution of all variables (features and label), with PXY = PX PY |X , then
+two simple changes are possible:
+1See for instance the papers on herding in factor investing: Krkoska and Schenk-Hoppé (2019) and Santi
+and Zwinkels (2018).
+
+--- PDF PAGE 254 ---
+14.2 Dealing with changing environments 235
+1. covariate shift : PX changes but PY|X does not: the features have a ﬂuctuating
+distribution, but their relationship with Y holds still;
+2. concept drift: PY|X changes but PX does not: feature distributions are stable, but
+their relation to Y is altered.
+Obviously, we omit the case when both items change, as it is too complex to handle. In factor
+investing, the feature engineering process (see Section 4.4) is partly designed to bypass the
+risk of covariate shift. Uniformization guarantees that the marginals stay the same, but
+correlations between features may of course change. The main issue is probably concept
+drift when the way features explain the label changes through time. In Cornuejols et al.
+(2018),2 the authors distinguish four types of drifts, which we reproduce in Figure 14.3. In
+factor models, changes are presumably a combination of all four types: they can be abrupt
+during crashes, but most of the time they are progressive (gradual or incremental) and
+never-ending (continuously recurring).
+conceptconcept
+Abrupt concept change
+concept
+Incremental concept change
+concept
+Recurring concept change
+Gradual concept change
+time
+time
+time
+time
+FIGURE 14.3: Diﬀerent ﬂavors of concept change.
+Naturally, if we acknowledge that the environment changes, it appears logical to adapt
+models accordingly, i.e., dynamically. This gives rise to the so-called stability-plasticity
+dilemma. This dilemma is a trade-oﬀ between model reactiveness (new instances have an
+important impact on updates) versus stability (these instances may not be representative
+of a slower trend and they may thus shift the model in a suboptimal direction).
+Practically, there are two ways to shift the cursor with respect to this dilemma: alter the
+chronological depth of the training sample (e.g., go further back in time), or, when it’s
+possible, allocate more weight to recent instances. We discuss the ﬁrst option in Section 12.1
+and the second is mentioned in Section 6.3 (though the purpose in Adaboost is precisely
+to let the algorithm handle the weights). In neural networks, it is possible, in all generality
+to introduce instance-based weights in the computation of the loss function, though this
+option is not (yet) available in Keras (to the best of our knowledge: the framework evolves
+2This book is probably the most complete reference for theoretical results in machine learning, but it is
+in French.
+
+--- PDF PAGE 255 ---
+236 14 Two key concepts: causality and non-stationarity
+rapidly). For simple regressions, this idea is known as weighted least squares wherein
+errors are weighted inside the loss:
+L =
+I∑
+i=1
+w i(y i − xib)2.
+In matrix terms, L =( y − Xb)′W(y − Xb), where W is a diagonal matrix of weights. The
+gradient with respect to b is equal to 2X′WXb − 2X′Wy so that the loss is minimized
+for b∗ =( X′WX)−1X′Wy. The standard least-square solution is recovered for W = I.
+In order to ﬁne-tune the reactiveness of the model, the weights must be a function that
+decreases as instances become older in the sample.
+There is of course no perfect solution to changing ﬁnancial environements. Below, we men-
+tion two routes that are taken in the ML literature to overcome the problem of non-
+stationarity in the data generating process. But ﬁrst, we propose yet another clear veri-
+ﬁcation that markets do experience time-varying distributions.
+14.2.1 Non-stationarity: yet another illustration
+One of the most basic practices in (ﬁnancial) econometrics is to work with returns (relative
+price changes). The simple reason is that returns seem to behave consistently through time
+(monthly returns are bounded, they usually lie between −1 and +1). Prices on the other
+hand shift and, often, some prices never come back to past values. This makes prices harder
+to study.
+Stationarity is a key notion in ﬁnancial econometrics: it is much easier to characterize a
+phenomenon with distributional properties that remain the same through time (this makes
+them possible to capture). Sadly, the distribution of returns is not stationary: both the
+mean and the variance of returns change along cycles.
+Below, in Figure 14.4, we illustrate this fact by computing the average monthly return for
+all calendar years in the whole dataset.
+data_ml["year"] = pd.to_datetime(data_ml['date']).dt.year
+# Adding a year column for later groupby
+data_ml.groupby("year")["R1M_Usd"].mean().plot.bar(figsize=[16,6])
+# Agreggating and plotting
+FIGURE 14.4: A verage monthly return on a yearly basis.
+
+--- PDF PAGE 256 ---
+14.2 Dealing with changing environments 237
+These changes in the mean are also accompanied by variations in the second moment (vari-
+ance/volatility). This eﬀect, known as volatility clustering, has been widely documented
+ever since the theoretical breakthrough of Engle (1982) (and even well before). We refer for
+instance to Cont (2007) for more details on this topic.
+In terms of machine learning models, this is also true. Below, we estimate a pure char-
+acteristic regression with one predictor, the market capitalization averaged over the past
+6-months ( r
+t+1,n = α + βx cap
+t,n + ϵt+1,n). The label is the 6-month forward return and the
+estimation is performed over every calendar year.
+def regress(df): # To avoid loop and keep...
+model=sm.OLS(df['R6M_Usd'],exog=sm.
+↪→add_constant(df[['Mkt_Cap_6M_Usd']]))
+# ... the groupby structure we use...
+return model.fit().params[1]
+# ... a function with statsmodel
+beta_cap = data_ml.groupby('year').apply(regress)
+# Perform regression
+beta_cap=pd.DataFrame(beta_cap,columns=['beta_cap']).reset_index()
+# Format into df
+beta_cap.groupby("year").mean().plot.bar(figsize=[16,6])
+# Plot
+FIGURE 14.5: Variations in betas with respect to a 6-month market capitalization.
+The bars in Figure 14.5 highlight the concept drift: overall, the relationship between capital-
+ization and returns is negative (the size eﬀect again). Sometimes it is markedly negative,
+sometimes, not so much. The ability of capitalization to explain returns is time-varying,
+and models must adapt accordingly.
+14.2.2 Online learning
+Online learning refers to a subset of machine learning in which new information arrives
+progressively and the integration of this ﬂow is performed iteratively (the term ‘ online’
+is not linked to the internet). In order to take the latest data updates into account, it is
+imperative to update the model (stating the obvious). This is clearly the case in ﬁnance,
+and this topic is closely related to the discussion on learning windows in Section 12.1.
+
+--- PDF PAGE 257 ---
+238 14 Two key concepts: causality and non-stationarity
+The problem is that if a 2019 model is trained on data from 2010 to 2019, the (dynamic)
+2020 model will have to be re trained with the whole dataset including the latest points
+from 2020. This can be heavy, and including just the latest points in the learning process
+would substantially decrease its computational cost. In neural networks, the sequential
+batch updating of weights can allow a progressive change in the model. Nonetheless, this is
+typically impossible for decision trees because the splits are decided once and for all. One
+notable exception is Basak (2004), but, in that case, the construction of the trees diﬀers
+strongly from the original algorithm.
+The simplest example of online learning is the Widrow-Hoﬀ algorithm (originally from
+Widrow and Hoﬀ (1960)). Originally, the idea comes from the so-called ADALINE (ADAp-
+tive LInear NEuron) model which is a neural network with one hidden layer with linear
+activation function (i.e., like a perceptron, but with a diﬀerent activation).
+Suppose the model is linear, that is y = Xb + e (a constant can be added to the list of
+predictors) and that the amount of data is both massive and coming in at a high frequency so
+that updating the model on the full sample is proscribed because it is technically intractable.
+A simple and heuristic way to update the values of b is to compute
+bt+1 ← −bt −η(xtb −yt)x′
+t,
+where xt is the row vector of instance t. The justiﬁcation is simple. The quadratic error
+(xtb −yt)2 has a gradient with respect to b equal to 2(xtb −yt)x′
+t; therefore, the above
+update is a simple example of gradient descent. ν must of course be quite small: if not, each
+new point will considerably alter b, thereby resulting in a volatile model.
+An exhaustive review of techniques pertaining to online learning is presented in Hoi et al.
+(2018) (section 4.11 is even dedicated to portfolio selection). The book Hazan et al. (2016)
+covers online convex optimization, which is a very close domain with a large overlap with
+online learning. The presentation below is adapted from the second and third parts of the
+ﬁrst survey.
+Datasets are indexed by time: we write Xt and yt for features and labels (the usual column
+index (k) and row index ( i) will not be used in this section). Time has a bounded horizon
+T . The machine learning model depends on some parameters θ and we denote it with fθ. At
+timet (when dataset (Xt,yt) is gathered), the loss function L of the trained model naturally
+depends on the data (X t,yt) and on the model via θt which are the parameter values ﬁtted
+to the time- t data. For notational simplicity, we henceforth write Lt(θt) = L(Xt, yt,θt).
+The key quantity in online learning is the regret over the whole time sequence:
+RT =
+T∑
+t=1
+Lt(θt) − inf
+θ∗∈Θ
+T∑
+t=1
+Lt(θ∗). (14.3)
+The regret is the total loss incurred by the models θt minus the minimal loss that could
+have been obtained with full knowledge of the data sequence (hence computed in hindsight).
+The basic methods in online learning are in fact quite similar to the batch-training of neural
+networks. The updating of the parameter is based on
+zt+1 =θt −ηt∇Lt(θt), (14.4)
+
+--- PDF PAGE 258 ---
+14.2 Dealing with changing environments 239
+where ∇Lt(θt) denotes the gradient of the current loss Lt. One problem that can arise is
+when zt+1 falls out of the bounds that are prescribed for θt. Thus, the candidate vector for
+the new parameters, zt+1, is projected onto the feasible domain which we call S here:
+θt+1 = ΠS(zt+1), with ΠS(u) = argmin
+θ∈S
+||θ − u||2. (14.5)
+Henceθt+1 is as close as possible to the intermediate choice zt+1. In Hazan et al. (2007),
+it is shown that under suitable assumptions, e.g., Lt being strictly convex with bounded
+gradient
+⏐⏐⏐⏐
+⏐⏐⏐⏐sup
+θ
+∇Lt(θ)
+⏐⏐⏐⏐
+⏐⏐⏐⏐ ≤G), the regret RT satisﬁes
+RT ≤ G2
+2H (1 + log(T )),
+where H is a scaling factor for the learning rate (also called step sizes): ηt = (Ht)−1.
+More sophisticated online algorithms generalize ( 14.4) and ( 14.5) by integrating the Hessian
+matrix ∇2Lt(θ) := [ ∇2Lt]i,j = ∂
+∂θi∂θj
+Lt(θ) and/or by including penalizations to reduce
+instability inθt. We refer to section 2 in Hoi et al. (2018) for more details on these extensions.
+An interesting stream of parameter updating is that of the passive-aggressive algorithms
+(PAAs) formalized in Crammer et al. (2006). The base case involves classiﬁcation tasks, but
+we stick to the regression setting below (section 5 in Crammer et al. (2006)). One strong
+limitation with PAAs is that they rely on the set of parameters where the loss is either
+zero or negligible: Θ∗
+ϵ = {θ,Lt(θ) < ϵ}. For general loss functions and learner f , this set
+is largely inaccessible. Thus, the algorithms in Crammer et al. (2006) are restricted to a
+particular case, namely linear f and ϵ-insensitive hinge loss:
+Lϵ(θ) =
+{
+0 if |θ′x −y| ≤ ϵ (close enough prediction )
+|θ′x −y| −ϵ if |θ′x −y|>ϵ (prediction too far ) ,
+for some parameter ϵ> 0. If the weight θ is such that the model is close enough to the true
+value, then the loss is zero; if not, it is equal to the absolute value of the error minus ϵ. In
+PAA, the update of the parameter is given by
+θt+1 = argmin
+θ
+||θ −θt||2
+2, subject to Lϵ(θ) = 0,
+hence the new parameter values are chosen such that two conditions are satisﬁed:
+1. the loss is zero (by the deﬁnition of the loss, this means that the model is close enough
+to the true value), and
+2. the parameter is as close as possible to the previous parameter values.
+By construction, if the model is good enough, the model does not move (passive phase), but
+if not, it is rapidly shifted towards values that yield satisfactory results (aggressive phase).
+We end this section with a historical note. Some of the ideas from online learning stem from
+the ﬁnancial literature and from the concept of universal portfolios originally coined by
+
+--- PDF PAGE 259 ---
+240 14 Two key concepts: causality and non-stationarity
+Cover (1991) in particular. The setting is the following. The function f is assumed to be
+linear f(xt) =θ′xt and the data xt consists of asset returns, thus, the values are portfolio
+returns as long as θ′1N = 1 (budget constraint). The loss functions Lt correspond to a
+concave utility function (e.g., logarithmic) and the regret is reversed:
+RT = sup
+θ∗∈Θ
+T∑
+t=1
+Lt(r′
+tθ∗) −
+T∑
+t=1
+Lt(r′
+tθt),
+where r′
+t are the returns. Thus, the program is transformed to maximize a concave function.
+Several articles (often from the Computer Science or ML communities) have proposed so-
+lutions to this type of problems: Blum and Kalai (1999), Agarwal et al. (2006), and Hazan
+et al. (2007). Most contributions work with price data only, with the notable exception
+of Cover and Ordentlich (1996), which mentions external data (‘ side information ’). In the
+latter article, it is proven that constantly rebalanced portfolios distributed according to two
+random distributions achieve growth rates that are close to the unattainable optimal rates.
+The two distributions are the uniform law (equally weighting, once again) and the Dirichlet
+distribution with constant parameters equal to 1/2. Under this universal distribution, Cover
+and Ordentlich (1996) show that the wealth obtained is bounded below by:
+wealth universal ≥ wealth from optimal strategy
+2(n + 1)(m−1)/2 ,
+where m is the number of assets and n is the number of periods.
+The literature on online portfolio allocation is reviewed in Li and Hoi (2014) and outlined
+in more details in Li and Hoi (2018). Online learning, combined to early stopping for neural
+networks, is applied to factor investing in Wong et al. (2020). Finally, online learning is
+associated to clustering methods for portfolio choice in Khedmati and Azin (2020).
+14.2.3 Homogeneous transfer learning
+This subsection is mostly conceptual and will not be illustrated by coded applications. The
+ideas behind transfer learning can be valuable in that they can foster novel ideas, which is
+why we brieﬂy present them below.
+Transfer learning has been surveyed numerous times. One classical reference is Pan and
+Yang (2009), but Weiss et al. (2016) is more recent and more exhaustive. Suppose we are
+given two datasets, DS (source) and DT (target). Each dataset has its own features XS and
+XT and labels yS and yT . In classical supervised learning, the patterns of the target set
+are learned only through XT and yT . Transfer learning proposes to improve the function
+fT (obtained by minimizing the ﬁt yT
+i =fT (xT
+i ) +ϵT
+i on the target data) via the function
+fS (from yS
+i = fS(xS
+i ) +εS
+i on the source data). Homogeneous transfer learning is when
+the feature space does not change, which is the case in our setting. In asset management,
+this may not always be the case if for instance new predictors are included (e.g., based on
+alternative data like sentiment, satellite imagery, credit card logs, etc.).
+There are many subcategories in transfer learning depending on what changes between the
+sourceS and the target T : is it the feature space, the distribution of the labels, and/or the
+relationship between the two? These are the same questions as in Section 14.2. The latter
+case is of interest in ﬁnance because the link with non-stationarity is evident: it is when
+the model f in y = f(X) changes through time. In transfer learning jargon, it is written
+as P [yS|XS] ̸
+=P [yT |XT ]: the conditional law of the label knowing the features is not the
+same when switching from the source to the target. Often, the term ‘domain adaptation’ is
+
+--- PDF PAGE 260 ---
+14.2 Dealing with changing environments 241
+used as synonym to transfer learning. Because of a data shift, we must adapt the model to
+increase its accuracy. These topics are reviewed in a series of chapters in the collection by
+Quionero-Candela et al. (2009).
+An important and elegant result in the theory was proven by Ben-David et al. (2010) in
+the case of binary classiﬁcation. We state it below. We consider f andh two classiﬁers with
+values in {0, 1}. The average error between the two over the domain S is deﬁned by
+ϵS(f,h ) = ES[|f(x) −h(x)|].
+Then,
+ϵT (fT,h ) ≤ϵS(fS,h )+ 2 sup
+B
+|PS(B)−PT (B)|
+  
+diﬀerence between domains
++ min (ES[|fS(x)−fT (x)|], ET [|fS(x)−fT (x)|])  
+diﬀerence between the two learning tasks
+,
+where PS and PT denote the distribution of the two domains. The above inequality is a
+bound on the generalization performance of h. If we take fS to be the best possible classiﬁer
+for S and fT the best for T , then the error generated by h in T is smaller than the sum
+of three components: - the error in the S space, the distance between the two domains
+(by how much the data space has shifted), and the distance between the two best models
+(generators).
+One solution that is often mentioned in transfer learning is instance weighting. We present
+it here in a general setting. In machine learning, we seek to minimize
+ϵT (f) = ET [L(y,f (X))],
+where L is some loss function that depends on the task (regression versus classiﬁcation).
+This can be arranged
+ϵT (f) = ET
+[PS(y, X)
+PS(y, X)L(y,f (X))
+]
+=
+∑
+y,X
+PT (y, X)PS(y, X)
+PS(y, X)L(y,f (X))
+= ES
+[PT (y, X)
+PS(y, X)L(y,f (X))
+]
+The key quantity is thus the transition ratio PT (y,X)
+PS(y,X) (Radon–Nikodym derivative under
+some assumptions). Of course, this ratio is largely inaccessible in practice, but it is possible
+to ﬁnd a weighting scheme (over the instances) that yields improvements over the error
+in the target space. The weighting scheme, just as in Coqueret and Guida (2020), can be
+binary, thereby simply excluding some observations in the computation of the error. Simply
+removing observations from the training sample can have beneﬁcial eﬀects.
+More generally, the above expression can be viewed as a theoretical invitation for user-
+speciﬁed instance weighting (as in Section 6.4.7). In the asset allocation parlance, this can
+be viewed as introducing views as to which observations are the most interesting, e.g.,
+value stocks can be allowed to have a larger weight in the computation of the loss if the
+
+--- PDF PAGE 261 ---
+242 14 Two key concepts: causality and non-stationarity
+user believes they carry more relevant information. Naturally, it then always remains to
+minimize this loss.
+We close this topic by mentioning a practical application of transfer learning developed in
+Koshiyama et al. (2020). The authors propose a neural network architecture that allows to
+share the learning process from diﬀerent strategies across several markets. This method is,
+among other things, aimed at alleviating the backtest overﬁtting problem.
+
+--- PDF PAGE 262 ---
+15
+Unsupervised learning
+All algorithms presented in Chapters 5 to 9 belong to the larger class of supervised learning
+tools. Such tools seek to unveil a mapping between predictors X and a label Z. The su-
+pervision comes from the fact that it is asked that the data tries to explain this particular
+variable Z. Another important part of machine learning consists of unsupervised tasks, that
+is, when Z is not speciﬁed and the algorithm tries to make sense of X on its own. Often,
+relationships between the components of X are identiﬁed. This ﬁeld is much too vast to be
+summarized in one book, let alone one chapter. The purpose here is to brieﬂy explain in
+what ways unsupervised learning can be used, especially in the data pre-processing phase.
+15.1 The problem with correlated predictors
+Often, it is tempting to supply all predictors to a ML-fueled predictive engine. That may not
+be a good idea when some predictors are highly correlated. To illustrate this, the simplest
+example is a regression on two variables with zero mean and covariance and precisions
+matrices:
+Σ = X′X =
+[
+1 ρ
+ρ 1
+]
+, Σ−1 = 1
+1 −ρ2
+[
+1 −ρ
+−ρ 1
+]
+.
+When the covariance/correlation ρ increase towards 1 (the two variables are co-linear), the
+scaling denominator in Σ−1 goes to zero and the formula ˆβ = Σ−1X′Z implies that one
+coeﬃcient will be highly positive and one highly negative. The regression creates a spurious
+arbitrage between the two variables. Of course, this is very ineﬃcient and yields disastrous
+results out-of-sample.
+We illustrate what happens when many variables are used in the regression below (Ta-
+ble 15.1). One elucidation of the aforementioned phenomenon comes from the variables
+Mkt_Cap_12M_Usd and Mkt_Cap_6M_Usd, which have a correlation of 99.6% in the
+training sample. Both are singled out as highly signiﬁcant, but their signs are contradictory.
+Moreover, the magnitude of their coeﬃcients is very close (0.21 versus 0.18), so that their
+net eﬀect cancels out. Naturally, providing the regression with only one of these two inputs
+would have been wiser.
+stat=sm.OLS(training_sample['R1M_Usd'],
+sm.add_constant(training_sample[features])).fit()
+# Model: predict R1M_Usd
+reg_thrhld=3
+# Keep significant predictors only
+243
+
+--- PDF PAGE 263 ---
+244 15 Unsupervised learning
+TABLE 15.1: Signiﬁcant predictors in the training sample.
+estimate std.error statistic p.value
+const 0.040574 0.005343 7.594323 3.107512e-14
+Ebitda_Margin 0.013237 0.003493 3.789999 1.506925e-04
+Ev_Ebitda 0.006814 0.002256 3.020213 2.526288e-03
+Fa_Ci 0.007231 0.002347 3.081471 2.060090e-03
+Fcf_Bv 0.025054 0.005131 4.882465 1.048492e-06
+Fcf_Yld -0.015893 0.003736 -4.254127 2.099628e-05
+Mkt_Cap_12M_Usd 0.204738 0.027432 7.463476 8.461142e-14
+Mkt_Cap_6M_Usd -0.179780 0.045939 -3.913443 9.101987e-05
+Mom_5M_Usd -0.018669 0.004431 -4.212972 2.521442e-05
+Mom_Sharp_11M_Usd 0.017817 0.004695 3.795131 1.476096e-04
+Ni 0.015461 0.004497 3.438361 5.853680e-04
+Ni_Avail_Margin 0.011814 0.003861 3.059359 2.218407e-03
+Ocf_Bv -0.019811 0.005294 -3.742277 1.824119e-04
+Pb -0.017897 0.003129 -5.720637 1.062777e-08
+Pe -0.008991 0.002354 -3.819565 1.337278e-04
+Sales_Ps -0.015786 0.004628 -3.411062 6.472325e-04
+Vol1Y_Usd 0.011425 0.002792 4.091628 4.285247e-05
+Vol3Y_Usd 0.008459 0.002795 3.026169 2.477060e-03
+boo_filter = np.abs(stat.tvalues) >= reg_thrhld
+# regressors significance threshold
+estimate=stat.params[boo_filter]
+# estimate
+std_error=stat.bse[boo_filter]
+# std.error
+statistic=stat.tvalues[boo_filter]
+# statistic
+p_value=stat.pvalues[boo_filter]
+# p.value
+significant_regressors=pd.
+↪→concat([estimate,std_error,statistic,p_value],axis=1)
+# Put output in clean format
+significant_regressors.columns=['estimate','std.error','statistic','p.
+↪→value']
+# Renaming columns
+significant_regressors
+In fact, there are several indicators for the market capitalization and maybe only one would
+suﬃce, but it is not obvious to tell which one is the best choice.
+To further depict correlation issues, we compute the correlation matrix of the predictors
+below (on the training sample). Because of its dimension, we show it graphically.
+sns.set(rc={'figure.figsize':(16,16)})
+# Setting the figsize in seaborn
+sns.heatmap(training_sample[features].corr())
+# Correlation matrix and plot
+
+--- PDF PAGE 264 ---
+15.2 Principal component analysis and autoencoders 245
+FIGURE 15.1: Correlation matrix of predictors.
+The graph of Figure 15.1 reveals several light squares around the diagonal. For instance,
+the biggest square around the ﬁrst third of features relates to all accounting ratios based on
+free cash ﬂows. Because of this common term in their calculation, the features are naturally
+highly correlated. These local correlation patterns occur several times in the dataset and
+explain why it is not a good idea to use simple regression with this set of features.
+In full disclosure, multicollinearity (when predictors are correlated) can be much less a
+problem for ML tools than it is for pure statistical inference. In statistics, one central goal
+is to study the properties of β coeﬃcients. Collinearity perturbs this kind of analysis. In
+machine learning, the aim is to maximize out-of-sample accuracy. If having many predictors
+can be helpful, then so be it. One simple example can help clarify this matter. When
+building a regression tree, having many predictors will give more options for the splits. If
+the features make sense, then they can be useful. The same reasoning applies to random
+forests and boosted trees. What does matter is that the large spectrum of features helps
+improve the generalization ability of the model. Their collinearity is irrelevant.
+In the remainder of the chapter, we present two approaches that help reduce the number of
+predictors:
+• the ﬁrst one aims at creating new variables that are uncorrelated with each other. Low
+correlation is favorable from an algorithmic point of view, but the new variables lack
+interpretability;
+• the second one gathers predictors into homogeneous clusters, and only one feature should
+be chosen out of this cluster. Here the rationale is reversed: interpretability is favored
+over statistical properties because the resulting set of features may still include high
+correlations, albeit to a lesser point compared to the original one.
+15.2 Principal component analysis and autoencoders
+The ﬁrst method is a cornerstone in dimensionality reduction. It seeks to determine a smaller
+number of factors ( K
+′ <K ) such that:
+
+--- PDF PAGE 265 ---
+246 15 Unsupervised learning
+- (i) the level of explanatory power remains as high as possible;
+- (ii) the resulting factors are linear combinations of the original variables;
+- (iii) the resulting factors are orthogonal.
+15.2.1 A bit of algebra
+In this short subsection, we deﬁne some key concepts that are required to fully understand
+the derivation of principal component analysis (PCA). Henceforth, we work with matrices
+(in bold fonts). An I ×K matrix X is orthonormal if I >K and X′X = IK. When I =K,
+the (square) matrix is called orthogonal and X′X = XX′ = IK, i.e., X−1 = X′.
+One foundational result in matrix theory is the Singular Value Decomposition (SVD, see,
+e.g., chapter 5 in Meyer (2000)). The SVD is formulated as follows: any I ×K matrix X
+can be decomposed into
+X = U∆V′, (15.1)
+where U (I ×I) and V (K ×K) are orthogonal and ∆ (with dimensions I ×K) is diagonal,
+i.e., ∆i,k = 0 whenever i ̸
+= k. In addition, ∆i,i ≥ 0: the diagonal terms of ∆ are non-
+negative.
+For simplicity, we assume below that 1′
+I X = 0′
+K, i.e., that all columns have zero sum (and
+hence zero mean). 1 This allows to write that the covariance matrix is equal to its sample
+estimate ΣX = 1
+I−1 X′X.
+One crucial feature of covariance matrices is their symmetry. Indeed, real-valued symmetric
+(square) matrices enjoy a SVD which is much more powerful: when X is symmetric, there
+exist an orthogonal matrix Q and a diagonal matrix D such that
+X = QDQ′. (15.2)
+This process is called diagonalization (see chapter 7 in Meyer (2000)) and conveniently
+applies to covariance matrices.
+15.2.2 PCA
+The goal of PCA is to build a dataset ˜X that has fewer columns, but that keeps as much
+information as possible when compressing the original one, X. The key notion is the change
+of base, which is a linear transformation of X into Z, a matrix with identical dimension,
+via
+Z = XP, (15.3)
+where P is a K ×K matrix. There are of course an inﬁnite number of ways to transform X
+into Z, but two fundamental constraints help reduce the possibilities. The ﬁrst constraint
+is that the columns of Z be uncorrelated. Having uncorrelated features is desirable because
+they then all tell diﬀerent stories and have zero redundancy. The second constraint is that
+the variance of the columns of Z is highly concentrated. This means that a few factors
+(columns) will capture most of the explanatory power (signal), while most (the others) will
+consist predominantly of noise. All of this is coded in the covariance matrix of Y:
+• the ﬁrst condition imposes that the covariance matrix be diagonal;
+1In practice, this is not a major problem; since we work with features that are uniformly distributed,
+de-meaning amounts to remove 0.5 to all feature values.
+
+--- PDF PAGE 266 ---
+15.2 Principal component analysis and autoencoders 247
+• the second condition imposes that the diagonal elements, when ranked in decreasing
+magnitude, see their value decline (sharply if possible).
+The covariance matrix of Z is
+ΣY = 1
+I − 1 Z′Z = 1
+I − 1 P′X′XP = 1
+I − 1 P′ΣX P. (15.4)
+In this expression, we plug the decomposition ( 15.2) of ΣX :
+ΣY = 1
+I − 1 P′QDQ′P,
+thus picking P = Q, we get, by orthogonality, ΣY = 1
+I−1 D, that is, a diagonal covariance
+matrix for Z. The columns of Z can then be re-shuﬄed in decreasing order of variance so
+that the diagonal elements of ΣY progressively shrink. This is useful because it helps locate
+the factors with most informational content (the ﬁrst factors). In the limit, a constant vector
+(with zero variance) carries no signal.
+The matrix Z is a linear transformation of X, thus, it is expected to carry the same infor-
+mation, even though this information is coded diﬀerently. Since the columns are ordered
+according to their relative importance, it is simple to omit some of them. The new set of
+features ˜X consists in the ﬁrst K′ (with K′ <K ) columns of Z.
+Below, we show how to perform PCA with scikit-learn and visualize the output with the
+Python PCA package. To ease readability, we use the smaller sample with few predictors.
+from sklearn import decomposition
+pca = decomposition.PCA(n_components=7)
+# we impose the number of components
+pca.fit(training_sample[features_short])
+# Performs PCA on smaller number of predictors
+print(pca.explained_variance_ratio_)
+# Cheking the variance explained per component
+P=pd.DataFrame(pca.components_,columns=features_short).T
+# Rotation (n x k) = (7 x 7)
+P.columns = ['P' + str(col) for col in P.columns]
+# tidying up columns names
+P
+[0.357182 0.19408 0.155613 0.104344 0.096014 0.070171 0.022593]
+P0 P1 P2 P3 P4 P5 P6
+Div_Yld -0.2715 0.5790 0.0457 -0.5289 0.2266 0.5065 0.0320
+Eps -0.4204 0.1500 -0.0247 0.3373 -0.7713 0.3018 0.0119
+Mkt_Cap_12M_Usd -0.5238 -0.3432 0.1722 0.0624 0.2527 0.0029 0.7143
+Mom_11M_Usd -0.0472 -0.0577 -0.8971 0.2410 0.2505 0.2584 0.0431
+Ocf -0.5329 -0.1958 0.1850 0.2343 0.3575 0.0490 -0.6768
+Pb -0.1524 -0.5808 -0.2210 -0.6821 -0.3086 0.0386 -0.1687
+Vol1Y_Usd 0.4068 -0.3811 0.2821 0.1554 0.0615 0.7625 0.0086
+The rotation gives the matrix P: it’s the tool that changes the base. The ﬁrst row of the
+output indicates the standard deviation of each new factor (column). Each factor is indicated
+
+--- PDF PAGE 267 ---
+248 15 Unsupervised learning
+via a PC index (principal component). Often, the ﬁrst PC (ﬁrst column PC1 in the output)
+loads negatively on all initial features: a convex weighted average of all predictors is expected
+to carry a lot of information. In the above example, it is almost the case, with the exception
+of volatility, which has a positive coeﬃcient in the ﬁrst PC. The second PC is an arbitrage
+between price-to-book (short) and dividend yield (long). The third PC is contrarian, as
+it loads heavily and negatively on momentum. Not all principal components are easy to
+interpret.
+Sometimes, it can be useful to visualize the way the principal components are built. In
+Figure 15.2, we show one popular representation that is used for two factors (usually the
+ﬁrst two).
+from pca import pca
+model = pca(n_components=7) # Initialize
+results=model.fit_transform(
+training_sample[features_short],col_labels=features_short)
+# Fit transform and include the column labels and row labels
+model.biplot(n_feat=7, PC=[0,1],cmap=None, label =None, legend=False )
+# Make biplot
+FIGURE 15.2: Visual representation of PCA with two dimensions.
+The numbers indicated along the axes are the proportion of explained variance of each PC.
+Compared to the ﬁgures in the ﬁrst line of the output, the numbers are squared and then
+divided by the total sum of squares.
+Once the rotation is known, it is possible to select a subsample of the transformed data.
+From the original 7 features, it is easy to pick just 4.
+pd.DataFrame( # Using DataFrame format
+np.matmul( # Matrix product using numpy
+training_sample[features_short].values,P.values[:, :4]),
+# Matrix values
+
+--- PDF PAGE 268 ---
+15.2 Principal component analysis and autoencoders 249
+columns=['PC1','PC2','PC3','PC4']
+# Change column names
+).head()
+# Show first 5 lines
+PC1 PC2 PC3 PC4
+0 -0.591998 -0.177306 0.058881 -0.349897
+1 -0.043180 -0.718323 -0.510459 -0.050138
+2 -1.104983 -0.429470 0.023240 -0.171445
+3 -0.376485 -0.418983 -0.650190 -0.081842
+4 -0.018831 -0.581435 0.242719 -0.358501
+These four factors can then be used as orthogonal features in any ML engine. The fact that
+the features are uncorrelated is undoubtedly an asset. But the price of this convenience
+is high: the features are no longer immediately interpretable. De-correlating the predictors
+adds yet another layer of “blackbox-ing” in the algorithm.
+PCA can also be used to estimate factor models. In Equation ( 15.3), it suﬃces to replace
+Z with returns, X with factor values, and P with factor loadings (see, e.g., Connor and
+Korajczyk (1988) for an early reference). More recently, Lettau and Pelger (2020a) and
+Lettau and Pelger (2020b) propose a thorough analysis of PCA estimation techniques.
+They notably argue that ﬁrst moments of returns are important and should be included in
+the objective function, alongside the optimization on the second moments.
+We end this subsection with a technical note. Usually, PCA is performed on the covariance
+matrix of returns. Sometimes, it may be preferable to decompose the correlation matrix.
+The result may adjust substantially if the variables have very diﬀerent variances (which is
+not really the case in the equity space). If the investment universe encompasses several asset
+classes, then a correlation-based PCA will reduce the importance of the most volatile class.
+In this case, it is as if all returns are scaled by their respective volatilities.
+15.2.3 Autoencoders
+In a PCA, the coding from X to Z is straightfoward, linear, and it works both ways:
+Z = XP and X = YP′,
+so that we recover X from Z. This can be writen diﬀerently:
+X
+encode via P
+−→ Z
+decode via P′
+−→ X (15.5)
+If we take the truncated version and seek a smaller output (with only K′ columns), this
+gives:
+X, (I × K)
+encode via PK′
+−→ ˜X, (I × K′)
+decode via P′
+K′
+−→ ˘X, (I × K), (15.6)
+where PK′ is the restriction of P to the K′ columns that correspond to the factors with
+the largest variances. The dimensions of matrices are indicated inside the brackets. In this
+case, the recoding cannot recover P exactly but only an approximation, which we write ˘X.
+This approximation is coded with less information, hence this new data ˘X is compressed
+and provides a parsimonious representation of the original sample X.
+
+--- PDF PAGE 269 ---
+250 15 Unsupervised learning
+An autoencodeur generalizes this concept to non-linear coding functions. Simple linear
+autoencoders are linked to latent factor models (see Proposition 1 in Gu et al. (2021) for
+the case of single layer autoencoders.) The scheme is the following
+X, (I ×K)
+encode via N
+− → ˜X =N(X), (I ×K′)
+decode via N′
+− → ˘X =N′( ˜X), (I ×K),
+(15.7)
+where the encoding and decoding functions N andN′ are often taken to be neural networks.
+The term autoencoder comes from the fact that the target output, which we often write
+Z is the original sample X. Thus, the algorithm seeks to determine the function N that
+minimizes the distance (to be deﬁned) between X and the output value ˘X. The encoder
+generates an alternative representation of X, whereas the decoder tries to recode it back
+to its original values. Naturally, the intermediate (coded) version ˜X is targeted to have a
+smaller dimension compared to X.
+15.2.4 Application
+Autoencoders are easy to code in Keras (see Chapter 7 for more details on Keras). To
+underline the power of the framework, we resort to another way of coding a NN: the so-
+called functional API. For simplicity, we work with the small number of predictors (7). The
+structure of the network consists of two symmetric networks with only one intermediate
+layer containing 32 units. The activation function is sigmoid; this makes sense since the
+input has values in the unit interval.
+input_layer = Input(shape=(7,))
+# features_short has 7 columns
+encoder=tf.keras.layers.Dense(units=32,/uni2423
+↪→activation="sigmoid")(input_layer)
+# First, encode
+encoder = tf.keras.layers.Dense(units=4)(encoder)
+# 4 dimensions for the output layer (same as PCA example)
+decoder = tf.keras.layers.Dense(units=32, activation="sigmoid")(encoder)
+# Then, from encoder, decode
+decoder = tf.keras.layers.Dense(units=7)(decoder)
+# the original sample has 7 features
+In the training part, we optimize the MSE and use an Adam update of the weights (see
+Section 7.2.3).
+ae_model = keras.Model(input_layer, decoder)
+# Builds the model
+ae_model.compile(# Learning parameters
+optimizer='adam',
+loss='mean_squared_error',
+metrics='mean_squared_error')
+Finally, we are ready to train the data onto itself! The evolution of loss on the training and
+testing samples is depicted in Figure 15.3. The decreasing pattern shows the progress of the
+quality in compression.
+
+--- PDF PAGE 270 ---
+15.3 Clustering via k-means 251
+history=ae_model.fit(NN_train_features, # Input
+NN_train_features, # Output
+epochs=15,
+batch_size=512,
+validation_data=(NN_test_features, NN_test_features))
+plot_history(history)
+FIGURE 15.3: Output from the training of an autoencoder.
+In order to get the details of all weights and biases, the syntax is the following.
+ae_weights=ae_model.get_weights()
+Retrieving the encoder and processing the data into the compressed format is just a matter
+of matrix manipulation. In practice, it is possible to build a submodel by loading the weights
+from the encoder (see exercise below).
+ae_model.save_weights(filepath ="ae_weights.hdf5", overwrite = True)
+# in order to do the end of chapter exercice
+15.3 Clustering via k-means
+The second family of unsupervised tools pertains to clustering. Features are grouped into
+homogeneous families of predictors. It is then possible to single out one among the group
+(or to create a synthetic average of all of them). Mechanically, the number of predictors is
+reduced.
+
+--- PDF PAGE 271 ---
+252 15 Unsupervised learning
+The principle is simple: among a group of variables (the reasoning would be the same for
+observations in the other dimension) x{1≤j≤J}, ﬁnd the combination of k<J groups that
+minimize
+k∑
+i=1
+∑
+x∈Si
+||x − mi||2, (15.8)
+where || · || is some norm which is usually taken to be the Euclidean l 2-norm. The Si are
+the groups and the minimization is run on the whole set of groups S. The mi are the group
+means (also called centroids or barycenters): mi =( card(Si))−1 ∑
+x∈Si
+x.
+In order to ensure optimality, all possible arrangements must be tested, which is pro-
+hibitively long when k and J are large. Therefore, the problem is usually solved with greedy
+algorithms that seek (and ﬁnd) solutions that are not optimal but ‘good enough’.
+One heuristic way to proceed is the following:
+0. Start with a (possibly random) partition of k clusters.
+1. For each cluster, compute the optimal mean values m
+∗
+i that minimizes expression (15.8).
+This is a simple quadratic program.
+2. Given the optimal centers m∗
+i
+, reassign the points xi so that they are all the closest to
+their center.
+3. Repeat steps 1. and 2. until the points do not change cluster at step 2.
+Below, we illustrate this process with an example. From all 93 features, we build 10 clusters.
+from sklearn import cluster
+k_means = cluster.KMeans(n_clusters=10)
+# setting the number of cluster
+k_means.fit(training_sample[features].T)
+# Performs the k-means clustering
+clusters=pd.DataFrame([features,k_means.labels_],index=["factor",
+"cluster"]).T# Organize the cluster data
+clusters.loc[clusters['cluster']==4,:]
+# Shows one particular group
+factor cluster
+6 Capex_Ps_Cf 4
+19 Eps 4
+20 Eps_Basic 4
+21 Eps_Basic_Gr 4
+22 Eps_Contin_Oper 4
+23 Eps_Dil 4
+68 Op_Prt_Margin 4
+69 Oper_Ps_Net_Cf 4
+80 Sales_Ps 4
+We single out the fourth cluster which is composed mainly of accounting ratios related to
+the proﬁtability of ﬁrms. Given these 10 clusters, we can build a much smaller group of
+features that can then be fed to the predictive engines described in Chapters 5 to 9. The
+representative of a cluster can be the member that is closest to the center, or simply the
+center itself. This pre-processing step can nonetheless cause problems in the forecasting
+phase. Typically, it requires that the training data be also clustered. The extension to the
+testing data is not straightforward (the clusters may not be the same).
+
+--- PDF PAGE 272 ---
+15.4 Nearest neighbors 253
+15.4 Nearest neighbors
+To the best of our knowledge, nearest neighbors are not used in large-scale portfolio choice
+applications. The reason is simple: computational cost. Nonetheless, the concept of neigh-
+bors is widespread in unsupervised learning and can be used locally in complement to
+interpretability tools. Theoretical results on k-NN relating to bounds for error rates on clas-
+siﬁcation tasks can be found in section 6.2 of Ripley (2007). The rationale is the following:
+1. if the training sample is able to accurately span the distribution of (y, X), and
+2. if the testing sample follows the same distribution as the training sample (or close
+enough);
+then the neighborhood of one instance xi from the testing features computed on the training
+sample will yield valuable information on yi.
+In what follows, we thus seek to ﬁnd neighbors of one particular instance xi (aK-dimensional
+row vector). Note that there is a major diﬀerence with the previous section: the clustering
+is intended at the observation level (row) and not at the predictor level (column).
+Given a dataset with the same (corresponding) columns Xi,k, the neighbors are deﬁned via
+a similarity measure (or distance)
+D(xj, xi) =
+K∑
+k=1
+ckdk(xj,k,xi,k), (15.9)
+where the distance functions dk can operate on various data types (numerical, categorical,
+etc.). For numerical values, dk(xj,k,xi,k) = (x j,k −xi,k)2 or dk(xj,k,xi,k) = |xj,k −xi,k|.
+For categorical values, we refer to the exhaustive survey by Boriah et al. (2008) which lists
+14 possible measures. Finally the ck in Equation (15.9) allow some ﬂexbility by weighting
+features. This is useful because both raw values ( xi,k versus xi,k′ ) or measure outputs ( dk
+versusdk′ ) can have diﬀerent scales.
+Once the distances are computed over the whole sample, they are ranked using indices
+li
+1,...,l i
+I :
+D
+(
+xli
+1
+, xi
+)
+≤D
+(
+xli
+2
+, xi
+)
+≤..., ≤D
+(
+xli
+I
+, xi
+)
+The nearest neighbors are those indexed by li
+m for m = 1,...,k . We leave out the case
+when there are problematic equalities of the type D
+(
+xli
+m, xi
+)
+=D
+(
+xli
+m
++1
+, xi
+)
+for the sake
+of simplicity and because they rarely occur in practice as long as there are suﬃciently many
+numerical predictors.
+Given these neighbors, it is now possible to build a prediction for the label side yi. The
+rationale is straightforward: if xi is close to other instances xj, then the label value yi
+should also be close to yj (under the assumption that the features carry some predictive
+information over the label y).
+
+--- PDF PAGE 273 ---
+254 15 Unsupervised learning
+An intuitive prediction for y i is the following weighted average:
+ˆy i =
+∑
+j̸=i h (D(xj , xi))y j
+∑
+j̸=i h (D(xj , xi)) ,
+where h is a decreasing function. Thus, the further xj is from xi, the smaller the weight
+in the average. A typical choice for h is h (z)= e−az for some parameter h (z)= e−az that
+determines how penalizing the distance D(xj , xi) is. Of course, the average can be taken
+in the set of k nearest neighbors, in which case the h is equal to zero beyond a particular
+distance threshold:
+ˆy i =
+∑
+j neighbor h (D(xj , xi))y j
+∑
+j neighbor h (D(xj , xi)) .
+A more agnostic rule is to take h := 1 over the set of neighbors and in this case, all
+neighbors have the same weight (see the old discussion by Bailey and Jain (1978) in the
+case of classiﬁcation). For classiﬁcation tasks, the procedure involves a voting rule whereby
+the class with the most votes wins the contest, with possible tie-breaking methods. The
+interested reader can have a look at the short survey in Bhatia et al. (2010).
+For the choice of optimal k , several complicated techniques and criteria exist (see, e.g.,
+Ghosh (2006) and Hall et al. (2008)). Heuristic values often do the job pretty well. A rule
+of thumb is that k =
+√
+I (I being the total number of instances) is not too far from the
+optimal value, unless I is exceedingly large.
+Below, we illustrate this concept. We pick one date (31th of December 2006) and single out
+one asset (with stock_id equal to 13). We then seek to ﬁnd the k = 30 stocks that are the
+closest to this asset at this particular date.
+from sklearn import neighbors as nb
+# Package for Nearest Neighbors detection
+knn_data = data_ml.loc[data_ml['date']=='2006-12-31',:]
+# Dataset for k-NN exercise
+knn_target = knn_data.loc[knn_data['stock_id'] == 13 , features]
+# Target observation
+knn_sample = knn_data.loc[knn_data['stock_id'] != 13 , features]
+# All other observations
+neighbors = nb.NearestNeighbors(n_neighbors=30)
+# Number of neighbors to use
+neighbors.fit(knn_sample)
+NearestNeighbors(n_neighbors=30)
+neigh_dist, neigh_ind = neighbors.kneighbors(knn_target)
+print(pd.DataFrame(neigh_ind))# Indices of the k nearest neighbors
+Once the neighbors and distances are known, we can compute a prediction for the return
+of the target stock. We use the function h (z)= e−z for the weighting of instances (via the
+distances).
+
+--- PDF PAGE 274 ---
+15.5 Coding exercise 255
+knn_labels = knn_data.loc[:, 'R1M_Usd'].values[neigh_ind]
+# y values for neigh_ind
+np.sum(knn_labels * np.exp(-neigh_dist)/np.sum(np.exp(-neigh_dist)))
+# Pred w. k(z)=e^(-z)
+0.03092438258317905
+knn_data.loc[knn_data['stock_id'] == 13 , 'R1M_Usd']
+# True y
+96734 0.089
+Name: R1M_Usd, dtype: float64
+The prediction is neither very good, nor very bad (the sign is correct!). However, note that
+this example cannot be used for predictive purposes because we use data from 2006-12-
+31 to predict a return at the same date. In order to avoid the forward-looking bias, the
+knn_sample variable should be chosen from a prior point in time.
+The above computations are fast (a handful of seconds at most), but they hold for only one
+asset. In a k -NN exercise, each stock gets a customed prediction, and the set of neighbors
+must be re-assessed each time. For N assets, N (N − 1)/ 2 distances must be evaluated. This
+is particularly costly in a backtest, especially when several parameters can be tested (the
+number of neighbors, k , or a in the weighting function h (z)= e−az ). When the investment
+universe is small (when trading indices for instance), k -NN methods become computationally
+attractive (see for instance Chen and Hao (2017)).
+15.5 Coding exercise
+Code the compressed version of the data (narrow training sample) via the encoder part of
+the autoencoder.
+
+--- PDF PAGE 275 ---
+Taylor & Francis 
+Taylor & Francis Group 
+http://taylorandfrancis.com 
+
+--- PDF PAGE 276 ---
+16
+Reinforcement learning
+Due to its increasing popularity within the Machine Learning community, we dedicate a
+chapter to reinforcement learning (RL). In 2019 only, more than 25 papers dedicated to RL
+were submitted to (or updated on) arXiv under the q:ﬁn (quantitative ﬁnance) classiﬁca-
+tion. Moreover, an early survey of RL-based portfolios is compiled in Sato (2019) (see also
+Zhang et al. (2020)), and general ﬁnancial applications are discussed in Kolm and Ritter
+(2019b), Meng and Khushi (2019), Charpentier et al. (2020), and Mosavi et al. (2020). This
+shows that RL has recently gained traction among the quantitative ﬁnance community. 1
+While RL is a framework much more than a particular algorithm, its eﬃcient application
+in portfolio management is not straightforward, as we will show.
+16.1 Theoretical layout
+16.1.1 General framework
+In this section, we introduce the core concepts of RL and follow relatively closely the nota-
+tions (and layout) of Sutton and Barto (2018), which is widely considered as a solid reference
+in the ﬁeld, along with Bertsekas (2017). One central tool in the ﬁeld is called the Markov
+Decision Process (MDP, see chapter 3 in Sutton and Barto (2018)).
+MDPs, like all RL frameworks, involve the interaction between an agent (e.g., trader or
+portfolio manager) and an environment (e.g., ﬁnancial market). The agent performs ac-
+tions that may alter the state of environment and gets a reward (possibly negative) for
+each action. This short sequence can be repeated an arbitrary number of times, as is shown
+in Figure 16.1 .
+Environment AgentR0
+S0
+A0 Environment AgentR1
+S1
+A1
+Initialization
+of state and
+reward
+Agent
+performs
+action
+Action
+generates
+reward and
+alters state
+Agent
+performs
+new actio n
+...
+FIGURE 16.1: Scheme of Markov Decision Process. R, S, and A stand for reward, state,
+and action, respectively.
+Given initialized values for the state of the environment ( S0) and reward (usually R0 = 0),
+the agent performs an action (e.g., invests in some assets). This generates a reward R1 (e.g.,
+1Like neural networks, reinforcement learning methods have also been recently developed for derivatives
+pricing and hedging, see for instance Kolm and Ritter (2019a).
+257
+
+--- PDF PAGE 277 ---
+258 16 Reinforcement learning
+returns, proﬁts, Sharpe ratio) and also a future state of the environment ( S1). Based on
+that, the agent performs a new action and the sequence continues. When the sets of states,
+actions, and rewards are ﬁnite, the MDP is logically called ﬁnite. In a ﬁnancial framework,
+this is somewhat unrealistic, and we discuss this issue later on. It nevertheless is not hard
+to think of simpliﬁed and discretized ﬁnancial problems. For instance, the reward can be
+binary: win money versus lose money. In the case of only one asset, the action can also
+be dual: investing versus not investing. When the number of assets is suﬃciently small, it
+is possible to set ﬁxed proportions that lead to a reasonable number of combinations of
+portfolio choices, etc.
+We pursue our exposé with ﬁnite MDPs; they are the most common in the literature, and
+their formal treatment is simpler. The relative simplicity of MDPs helps in grasping the
+concepts that are common to other RL techniques. As is often the case with Markovian
+objects, the key notion is that of transition probability :
+p(s′,r |s,a ) = P [St =s′,Rt =r|St−1 =s,At−1 =a], (16.1)
+which is the probability of reaching state s′ and reward r at time t, conditionally on being
+in state s and performing action a at time t − 1. The ﬁnite sets of states and actions will
+be denoted with S and A henceforth. Sometimes, this probability is averaged over the set
+of rewards which gives the following decomposition:
+∑
+r
+rp(s′,r |s,a ) = Pa
+ss′ Ra
+ss′, where (16.2)
+Pa
+ss′ = P [St =s′|St−1 =s,At−1 =a], and
+Ra
+ss′ = E [Rt|St−1 =s,St =s′,At−1 =a].
+The goal of the agent is to maximize some function of the stream of rewards. This gain is
+usually deﬁned as
+Gt =
+T∑
+k=0
+γkRt+k+1
+=Rt+1 +γGt+1, (16.3)
+i.e., it is a discounted version of the reward, where the discount factor is γ ∈ (0, 1]. The
+horizonT may be inﬁnite, which is why γ was originally introduced. Assuming the rewards
+are bounded, the inﬁnite sum may diverge for γ = 1 . That is the case if rewards don’t
+decrease with time, and there is no reason why they should. When γ < 1 and rewards
+are bounded, convergence is assured. When T is ﬁnite, the task is called episodic, and,
+otherwise, it is said to be continuous.
+In RL, the focal unknown to be optimized or learned is the policy π, which drives the
+actions of the agent. More precisely, π(a,s ) = P[At = a|St = s], that is, π equals the
+probability of taking action a if the state of the environment is s. This means that actions
+are subject to randomness, just like for mixed strategies in game theory. While this may
+seem disappointing because an investor would want to be sure to take the best action, it is
+also a good reminder that the best way to face random outcomes may well be to randomize
+actions as well.
+Finally, in order to try to determine the best policy, one key indicator is the so-called value
+function:
+vπ(s) = Eπ [Gt|St =s], (16.4)
+
+--- PDF PAGE 278 ---
+16.1 Theoretical layout 259
+where the time index t is not very relevant and omitted in the notation of the function. The
+indexπ under the expectation operator E[·] simply indicates that the average is taken when
+the policy π is enforced. The value function is simply equal to the average gain conditionally
+on the state being equal to s. In ﬁnancial terms, this is equivalent to the average proﬁt if
+the agent takes actions driven by π when the market environment is s. More generally, it
+is also possible to condition not only on the state, but also on the action taken. We thus
+introduce the qπ action-value function:
+qπ(s,a ) = Eπ [Gt|St =s, At =a]. (16.5)
+The qπ function is highly important because it gives the average gain when the state and
+action are ﬁxed. Hence, if the current state is known, then one obvious choice is to select
+the action for which qπ(s, ·) is the highest. Of course, this is the best solution if the optimal
+value of qπ is known, which is not always the case in practice. The value function can easily
+be accessed via qπ: vπ(s) = ∑
+aπ(a,s)qπ(s,a ).
+The optimal vπ and qπ are straightforwardly deﬁned as
+v∗(s) = max
+π
+vπ(s), ∀s ∈ S, and q∗(s,a ) = max
+π
+qπ(s,a ), ∀(s,a ) ∈ S × A.
+If only v∗(s) is known, then the agent must span the set of actions and ﬁnd those that yield
+the maximum value for any given state s.
+Finding these optimal values is a very complicated task and many articles are dedicated
+to solving this challenge. One reason why ﬁnding the best qπ(s,a ) is diﬃcult is because it
+depends on two elements ( s and a) on one side and π on the other. Usually, for a ﬁxed
+policy π, it can be time consuming to evaluate qπ(s,a ) for a given stream of actions, states
+and rewards. Once qπ(s,a ) is estimated, then a new policy π′ must be tested and evaluated
+to determine if it is better than the original one. Thus, this iterative search for a good
+policy can take long. For more details on policy improvement and value function updat-
+ing, we recommend chapter 4 of Sutton and Barto (2018) which is dedicated to dynamic
+programming.
+16.1.2 Q-learning
+An interesting shortcut to the problem of ﬁnding v∗(s) andq∗(s,a ) is to remove the depen-
+dence on the policy. Consequently, there is then of course no need to iteratively improve it.
+The central relationship that is required to do this is the so-called Bellman equation that
+is satisﬁed by qπ(s,a ). We detail its derivation below. First of all, we recall that
+qπ(s,a ) = Eπ[Gt|St =s,At =a]
+= Eπ[Rt+1 +γGt+1|St =s,At =a],
+where the second equality stems from ( 16.3). The expression Eπ[Rt+1|St = s,At = a] can
+be further decomposed. Since the expectation runs over π, we need to sum over all possible
+actionsa′ and statess′ and resort to π(a′,s′). In addition, the sum on the s′ andr arguments
+of the probability p(s′,r |s,a ) = P [St+1 =s′,Rt+1 =r|St =s,At =a] gives access to the
+distribution of the random couple (St+1,Rt+1) so that in the end Eπ[Rt+1|St = s,At =
+a] = ∑
+a′,r,s′π(a′,s′)p(s′,r |s,a )r. A similar reasoning applies to the second portion of qπ
+
+--- PDF PAGE 279 ---
+260 16 Reinforcement learning
+and:
+qπ(s,a ) =
+∑
+a′,r,s′
+π(a′,s′)p(s′,r |s,a ) [r +γEπ[Gt+1|St =s′,At =a′]]
+=
+∑
+a′,r,s′
+π(a′,s′)p(s′,r |s,a ) [r +γqπ(s′,a′)]. (16.6)
+This equation links qπ(s,a ) to the future qπ(s′,a′) from the states and actions (s′,a′) that
+are accessible from (s,a ).
+Notably, Equation (16.6) is also true for the optimal action-value function q∗ = max
+π
+qπ(s,a ):
+q∗(s,a ) = max
+a′
+∑
+r,s′
+p(s′,r |s,a ) [r +γq∗(s′,a′)],
+= Eπ∗[r|s,a ] +γ
+∑
+r,s′
+p(s′,r |s,a )
+(
+max
+a′
+q∗(s′,a′)
+)
+(16.7)
+because one optimal policy is one that maximizes qπ(s,a ), for a given state s and over all
+possible actions a. This expression is central to a cornerstone algorithm in reinforcement
+learning calledQ-learning (the formal proof of convergence is outlined in Watkins and Dayan
+(1992)). In Q-learning, the state-action function no longer depends on policy and is written
+with capital Q. The process is the following:
+Initialize values Q(s,a ) for all states s and actions a. For each episode:
+(QL)
+
+
+
+0. Initialize state S0 and for each iteration i until the end of the episode;
+1. observe state si;
+2. perform action ai(depending on Q);
+3. receive reward ri+1 and observe state si+1;
+4. Update Q as follows:
+Qi+1(si,ai) ← −Qi(si,ai) +η
+
+ri+1 +γ max
+a
+Qi(si+1,a )
+  
+echo of (16.7)
+−Qi(si,ai)
+
+ (16.8)
+The underlying reason this update rule works can be linked to ﬁxed point theorems of
+contraction mappings. If a function f satisﬁes |f(x) −f(y)|<δ |x −y| (Lipshitz continuity),
+then a ﬁxed point z satisfying f(z) = z can be iteratively obtained via z ← f(z). This
+updating rule converges to the ﬁxed point. Equation ( 16.7) can be solved using a similar
+principle, except that a learning rate η slows the learning process but also technically ensures
+convergence under technical assumptions.
+More generally, ( 16.8) has a form that is widespread in reinforcement learning that is sum-
+marized in Equation (2.4) of Sutton and Barto (2018):
+New estimate ← Old estimate + Step size ( i.e., learning rate) × (Target − Old estimate),
+(16.9)
+
+--- PDF PAGE 280 ---
+16.1 Theoretical layout 261
+where the last part can be viewed as an error term. Starting from the old estimate, the new
+estimate therefore goes in the ‘right’ (or sought) direction, modulo a discount term that
+makes sure that the magnitude of this direction is not too large. The update rule in ( 16.8)
+is often referred to as ‘ temporal diﬀerence’ learning because it is driven by the improvement
+yielded by estimates that are known at time t + 1 (target) versus those known at time t.
+One important step of the Q-learning sequence ( QL) is the second one where the action ai
+is picked. In RL, the best algorithms combine two features: exploitation and exploration.
+Exploitation is when the machine uses the current information at its disposal to choose the
+next action. In this case, for a given state si, it chooses the action ai that maximizes the
+expected reward Qi(si,ai). While obvious, this choice is not optimal if the current function
+Qi is relatively far from the true Q. Repeating the locally optimal strategy is likely to favor
+a limited number of actions, which will narrowly improve the accuracy of the Q function.
+In order to gather new information stemming from actions that have not been tested much
+(but that can potentially generate higher rewards), exploration is needed. This is when an
+actionai is chosen randomly. The most common way to combine these two concepts is called
+ϵ-greedy exploration. The action ai is assigned according to:
+ai =
+{
+argmax
+a
+Qi(si,a ) with probability 1 −ϵ
+randomly (uniformly) over A with probability ϵ
+. (16.10)
+Thus, with probability ϵ, the algorithm explores and with probability 1 −ϵ, it exploits the
+current knowledge of the expected reward and picks the best action. Because all actions
+have a non-zero probability of being chosen, the policy is called “soft”. Indeed, then best
+action has a probability of selection equal to 1 −ϵ(1 − card(A)−1), while all other actions
+are picked with probability ϵ/card(A).
+16.1.3 SARSA
+In Q-learning, the algorithm seeks to ﬁnd the action-value function of the optimal policy.
+Thus, the policy that is followed to pick actions is diﬀerent from the one that is learned
+(via Q). Such algorithms are called oﬀ-policy. On-policy algorithms seek to improve the
+estimation of the action-value function qπ by continuously acting according to the policy
+π. One canonical example of on-policy learning is the SARSA method which requires two
+consecutive states and actions SARSA. The way the quintuple (St,At,Rt+1,St+1,At+1) is
+processed is presented below.
+The main diﬀerence between Q learning and SARSA is the update rule. In SARSA, it is
+given by
+Qi+1(si,ai) ← −Qi(si,ai) +η (ri+1 +γQi(si+1,ai+1) −Qi(si,ai)) (16.11)
+The improvement comes only from the local point Qi(si+1,ai+1) that is based on the new
+states and actions ( si+1,ai+1), whereas in Q-learning, it comes from all possible actions of
+which only the best is retained max
+a
+Qi(si+1,a ).
+A more robust but also more computationally demanding version of SARSA is expected
+SARSA in which the target Q function is averaged over all actions:
+Qi+1(si,ai) ← −Qi(si,ai) +η
+(
+ri+1 +γ
+∑
+a
+π(a,si+1)Qi(si+1,a ) −Qi(si,ai)
+)
+(16.12)
+
+--- PDF PAGE 281 ---
+262 16 Reinforcement learning
+Expected SARSA is less volatile than SARSA because the latter is strongly impacted by
+the random choice of ai+1. In expected SARSA, the average smoothes the learning process.
+16.2 The curse of dimensionality
+Let us ﬁrst recall that reinforcement learning is a framework that is not linked to a par-
+ticular algorithm. In fact, diﬀerent tools can very well co-exist in a RL task (AlphaGo
+combined both tree methods and neural networks, see Silver et al. (2016)). Nonetheless,
+any RL attempt will always rely on the three key concepts: states, actions, and rewards. In
+factor investing, they are fairly easy to identify, though there is always room for interpre-
+tation. Actions are evidently deﬁned by portfolio compositions. The states can be viewed
+as the current values that describe the economy: as a ﬁrst-order approximation, it can be
+assumed that the feature levels fulﬁll this role (possibly conditioned or complemented with
+macro-economic data). The rewards are even more straightforward. Returns or any relevant
+performance metric 2 can account for rewards.
+A major problem lies in the dimensionality of both states and actions. Assuming an absence
+of leverage (no negative weights), the actions take values on the simplex
+SN =
+{
+x ∈ RN
+⏐⏐⏐⏐⏐
+N∑
+n=1
+xn = 1, xn ≥ 0, ∀n = 1,...,N
+}
+(16.13)
+and assuming that all features have been uniformized, their space is [0, 1]NK . Needless to
+say, the dimensions of both spaces are numerically impractical.
+A simple solution to this problem is discretization: each space is divided into a small number
+of categories. Some authors do take this route. In Yang et al. (2018), the state space is
+discretized into three values depending on volatility, and actions are also split into three
+categories. Bertoluzzo and Corazza (2012) and Xiong et al. (2018) also choose three possible
+actions (buy, hold, sell). In Almahdi and Yang (2019), the learner is expected to yield binary
+signals for buying or shorting. García-Galicia et al. (2019) consider a larger state space (eight
+elements) but restrict the action set to three options. 3 In terms of the state space, all articles
+assume that the state of the economy is determined by prices (or returns).
+One strong limitation of these approaches is the marked simpliﬁcation they imply. Realistic
+discretizations are numerically intractable when investing in multiple assets. Indeed, split-
+ting the unit interval in h points yields hNK possibilities for feature values. The number
+of options for weight combinations is exponentially increasing N . As an example: just 10
+possible values for 10 features of 10 stocks yield 10100 permutations.
+The problems mentioned above are of course not restricted to portfolio construction. Many
+solutions have been proposed to solve Markov Decision Processes in continuous spaces. We
+refer for instance to Section 4 in Powell and Ma (2011) for a review of early methods (outside
+ﬁnance).
+This curse of dimensionality is accompanied by the fundamental question of training data.
+2For example, Sharpe ratio which is for instance used in Moody et al. (1998), Bertoluzzo and Corazza
+(2012), and Aboussalah and Lee (2020) or drawdown-based ratios, as in Almahdi and Yang (2017).
+3Some recent papers consider arbitrary weights (e.g., Jiang et al. (2017) and Yu et al. (2019)) for a
+limited number of assets.
+
+--- PDF PAGE 282 ---
+16.3 Policy gradient 263
+Two options are conceivable: market data versus simulations. Under a given controlled
+generator of samples, it is hard to imagine that the algorithm will beat the solution that
+maximizes a given utility function. If anything, it should converge towards the static optimal
+solution under a stationary data generating process (see, e.g., Chaouki et al. (2020) for
+trading tasks), which is by the way a very strong modelling assumption.
+This leaves market data as a preferred solution but even with large datasets, there is little
+chance to cover all the (actions, states) combinations mentioned above. Characteristics-
+based datasets have depths that run through a few decades of monthly data, which means
+several hundreds of time-stamps at most. This is by far too limited to allow for a reliable
+learning process. It is always possible to generate synthetic data (as in Yu et al. (2019)),
+but it is unclear that this will solidly improve the performance of the algorithm.
+16.3 Policy gradient
+16.3.1 Principle
+Beyond the discretization of action and state spaces, a powerful trick is parametrization.
+When a and s can take discrete values, action-value functions must be computed for all
+pairs (a,s ), which can be prohibitively cumbersome. An elegant way to circumvent this
+problem is to assume that the policy is driven by a relatively modest number of parameters.
+The learning process is then focused on optimizing this set of parameters θ. We then write
+πθ(a,s ) for the probability of choosing action a in state s. One intuitive way to deﬁne
+πθ(a,s ) is to resort to a soft-max form:
+πθ(a,s ) = eθ′h(a,s)
+∑
+beθ′h(b,s), (16.14)
+where the output of function h(a,s ), which has the same dimension as θ is called a feature
+vector representing the pair (a,s ). Typically, h can very well be a simple neural network
+with two input units and an output dimension equal to the length of θ.
+One desired property for πθ is that it be diﬀerentiable with respect to θ so that θ can be
+improved via some gradient method. The most simple and intuitive results about policy
+gradients are known in the case of episodic tasks (ﬁnite horizon) for which it is sought
+to maximize the average gain Eθ[Gt] where the gain is deﬁned in Equation ( 16.3). The
+expectation is computed according to a particular policy that depends on θ, this is why
+we use a simple subscript. One central result is the so-called policy gradient theorem which
+states that
+∇Eθ[Gt] = Eθ
+[
+Gt
+∇πθ
+πθ
+]
+. (16.15)
+This result can then be used for gradient ascent : when seeking to maximize a quantity,
+the parameter change must go in the upward direction:
+θ ←θ +η∇Eθ[Gt]. (16.16)
+
+--- PDF PAGE 283 ---
+264 16 Reinforcement learning
+This simple update rule is known as the Reinforce algorithm. One improvement of this
+simple idea is to add a baseline, and we refer to section 13.4 of Sutton and Barto (2018) for
+a detailed account on this topic.
+16.3.2 Extensions
+A popular extension of Reinforce is the so-called actor-critic (AC) method which combines
+policy gradient with Q- or v-learning. The AC algorithm can be viewed as some kind of mix
+between policy gradient and SARSA. A central requirement is that the state-value function
+v(·) be a diﬀerentiable function of some parameter vector w (it is often taken to be a neural
+network). The update rule is then
+θ ←θ +η (Rt+1 +γv(St+1, w) −v(St, w)) ∇πθ
+πθ
+, (16.17)
+but the trick is that the vector w must also be updated. The actor is the policy side which is
+what drives decision making. The critic side is the value function that evaluates the actor’s
+performance. As learning progresses (each time both sets of parameters are updated), both
+sides improve. The exact algorithmic formulation is a bit long, and we refer to section 13.5
+in Sutton and Barto (2018) for the precise sequence of steps of AC.
+Another interesting application of parametric policies is outlined in Aboussalah and Lee
+(2020). In their article, the authors deﬁne a trading policy that is based on a recurrent
+neural network. Thus, the parameter θ in this case encompasses all weights and biases in
+the network.
+Another favorable feature of parametric policies is that they are compatible with continuous
+sets of actions. Beyond the form ( 16.14), there are other ways to shape πθ. If A is a subset
+of R, and fΩ is a density function with parameters Ω, then a candidate form for πθ is
+πθ =fΩ(s,θ)(a), (16.18)
+in which the parameters Ω are in turn functions of the states and of the underlying (second
+order) parameters θ.
+While the Gaussian distribution (see section 13.7 in Sutton and Barto (2018)) is often a
+preferred choice, they would require some processing to lie inside the unit interval. One
+easy way to obtain such values is to apply the normal cumulative distribution function to
+the output. In Wang and Zhou (2019), the multivariate Gaussian policy is theoretically
+explored, but it assumes no constraint on weights.
+Some natural parametric distributions emerge as alternatives. If only one asset is traded,
+then the Bernoulli distribution can be used to determine whether or not to buy the asset.
+If a riskless asset is available, the beta distribution oﬀers more ﬂexibility because the values
+for the proportion invested in the risky asset span the whole interval; the remainder can be
+invested into the safe asset. When many assets are traded, things become more complicated
+because of the budget constraint. One ideal candidate is the Dirichlet distribution because
+it is deﬁned on a simplex (see Equation (16.13)):
+fα(w1,...,w n) = 1
+B(α)
+N∏
+n=1
+wαn−1
+n ,
+
+--- PDF PAGE 284 ---
+16.4 Simple examples 265
+where B(α) is the multinomial beta function:
+B(α) =
+∏N
+n=1 Γ(αn)
+Γ
+(∑N
+n=1αn
+).
+If we set π =πα =fα, the link with factors or characteristics can be coded through α via
+a linear form:
+(F1) αn,t =θ0,t +
+K∑
+k=1
+θ(k)
+t x(k)
+t,n, (16.19)
+which is highly tractable, but may violate the condition that αn,t > 0 for some values of
+θk,t. Indeed, during the learning process, an update in θ might yield values that are out of
+the feasible set of αt. In this case, it is possible to resort to a trick that is widely used in
+online learning (see, e.g., section 2.3.1 in Hoi et al. (2018)). The idea is simply to ﬁnd the
+acceptable solution that is closest to the suggestion from the algorithm. If we call θ∗ the
+result of an update rule from a given algorithm, then the closest feasible vector is
+θ = min
+z∈Θ(xt)
+||θ∗ − z||2, (16.20)
+where ||
+· || is the Euclidean norm and Θ(xt) is the feasible set, that is, the set of vectors θ
+such that the αn,t =θ0,t + ∑K
+k=1θ(k)
+t x(k)
+t,n are all non-negative.
+A second option for the form of the policy, π2
+θt , is slightly more complex but remains always
+valid (i.e., has positive αn,t values):
+(F2) αn,t = exp
+(
+θ0,t +
+K∑
+k=1
+θ(k)
+t x(k)
+t,n
+)
+, (16.21)
+which is simply the exponential of the ﬁrst version. With some algebra, it is possible to
+derive the policy gradients. The policies πj
+θt
+are deﬁned by the equations (Fj) above. Let
+Ϝ denote the digamma function. Let 1 denote the RN vector of all ones. We have
+∇θtπ1
+θt
+π1
+θt
+=
+N∑
+n=1
+(Ϝ (1′Xtθt) − Ϝ(xt,nθt) + lnwn) x′
+t,n
+∇θtπ2
+θt
+π2
+θt
+=
+N∑
+n=1
+(
+Ϝ
+(
+1′eXtθt
+)
+− Ϝ(ext,nθt) + lnwn
+)
+ext,nθt x′
+t,n
+where eX is the element-wise exponential of a matrix X.
+The allocation can then either be made by direct sampling, or using the mean of the
+distribution (1′α)−1α. Lastly, here is a technical note: Dirichlet distributions can only be
+used for small portfolios because the scaling constant in the density becomes numerically
+intractable for large values of N (e.g., above 50).
+16.4 Simple examples
+16.4.1 Q-learning with simulations
+To illustrate the gist of the problems mentioned above, we propose two implementations of
+Q-learning. For simplicity, the ﬁrst one is based on simulations. This helps understand the
+
+--- PDF PAGE 285 ---
+266 16 Reinforcement learning
+learning process in a simpliﬁed framework. We consider two assets: one risky and one riskless,
+with return equal to zero. The returns for the risky process follow an autoregressive model
+of order one (AR(1)): rt+1 =a +ρrt +ϵt+1 with |ρ|< 1 and ϵ following a standard white
+noise with variance σ2. In practice, individual (monthly) returns are seldom autocorrelated,
+but adjusting the autocorrelation helps understand if the algorithm learns correctly (see
+exercise below).
+The environment consists only in observing the past return rt. Since we seek to estimate
+the Q function, we need to discretize this state variable. The simplest choice is to resort
+to a binary variable: equal to −1 (negative) if rt < 0, and to +1 (positive) if rt ≥ 0. The
+actions are summarized by the quantity invested in the risky asset. It can take ﬁve values:
+0 (risk-free portfolio), 0.25, 0.5, 0.75, and 1 (fully invested in the risky asset). This is for
+instance the same choice as in Pendharkar and Cusatis (2018).
+For the sake of understanding, we resort to code an intuitive implementation of Q-learning
+ourselves. It requires a dataset with the usual inputs: state, action, reward, and subsequent
+state. We start by simulating the returns: they drive the states and the rewards (portfolio
+returns). The actions are sampled randomly. The data is built in the chunk below.
+from statsmodels.tsa.arima_process import ArmaProcess
+# Sub-library for generating AR(1)
+n_sample = 10**5 # Number of samples to be generated
+rho=0.8 # Autoregressive parameter
+sd=0.4 # Std. dev. of noise
+a=0.06*(1-rho) # Scaled mean of returns
+#
+ar1 = np.array([1,-rho]) # template for ar param, inverse sign of rho
+AR_object1 = ArmaProcess(ar1) # Creating the AR object
+simulated_data_AR1 = AR_object1.
+↪→generate_sample(nsample=n_sample,scale=sd)
+# generate sample from AR object
+returns=a/rho+simulated_data_AR1 # Returns via AR(1) simulation
+action = np.round(np.random.uniform(size=n_sample)*4) / 4 # Random action
+state = np.where(returns < 0 , "neg", "pos") # Coding of state
+reward = returns * action # Reward = portfolio return
+#
+data_RL = pd.DataFrame([returns, action, state, reward]) .T
+# transposing for display consistency
+data_RL.columns = ['returns', 'action', 'state', 'reward']
+# naming the columns for future table print
+data_RL['new_state'] = data_RL['state'].shift(-1)
+# Next state using lag
+data_RL = data_RL.dropna(axis=0).reset_index(drop=True)
+# Remove one missing new state, last row
+data_RL.head()
+# Show first lines
+
+--- PDF PAGE 286 ---
+16.4 Simple examples 267
+returns action state reward new_state
+0 0.063438 0.75 pos 0.047579 neg
+1 -0.602351 0.25 neg -0.150588 pos
+2 0.112012 0.5 pos 0.056006 pos
+3 0.220316 0.5 pos 0.110158 pos
+4 0.437028 0.75 pos 0.327771 pos
+There are three parameters in the implementation of the Q-learning algorithm:
+• η, which is the learning rate in the updating Equation ( 16.8). In ReinforcementLearning,
+this is coded as alpha;
+• γ, the discounting rate for the rewards (also shown in Equation ( 16.8)) a
+• ϵ, which controls the rate of exploration versus exploitation (see Equation ( 16.10)).
+alpha = 0.1 # Learning rate
+gamma = 0.7 # Discount factor for rewards
+epsilon = 0.5 # Exploration rate
+def looping_w_counters(obj_array):
+# create util function for loop with counter
+_dict = {z:i for i,z in enumerate(obj_array)}
+# Dictionary comprehensions
+return _dict
+s =looping_w_counters(data_RL['state'].unique()) # Dict for states
+a =looping_w_counters(data_RL['action'].unique()) # Dict for actions
+fit_RL = np.zeros(shape=(len(s),len(a))) # Placeholder for Q matrix
+r_final =0
+for z, row in data_RL.iterrows(): # loop for Q-learning
+act = a[row.action]
+r = row.reward
+s_current = s[row.state]
+s_new = s[row.new_state]
+if np.random.uniform(size=1) < epsilon:
+best_new = a[np.random.choice(list(a.keys()))]
+# Explore action space
+else:
+best_new = np.argmax(fit_RL[s_new,])
+# Exploit learned values
+r_final += r
+fit_RL[s_current,act]+=alpha*(
+r+gamma*fit_RL[s_new,best_new]-fit_RL[s_current,act])
+fit_RL=pd.DataFrame(fit_RL,index=s.keys(),
+columns=a.keys()).sort_index(axis=1)
+print(fit_RL)
+print(f'Reward (last iteration): {r_final}')
+The output shows the Q function, which depends naturally both on states and actions. When
+the state is negative, large risky positions (action equal to 0.75 or 1.00) are associated with
+
+--- PDF PAGE 287 ---
+268 16 Reinforcement learning
+the smallest average rewards, whereas small positions yield the highest average rewards.
+When the state is positive, the average rewards are the highest for the largest allocations.
+The rewards in both cases are almost a monotonic function of the proportion invested in the
+risky asset. Thus, the recommendation of the algorithm (i.e., policy) is to be fully invested
+in a positive state and to refrain from investing in a negative state. Given the positive
+autocorrelation of the underlying process, this does make sense.
+Basically, the algorithm has simply learned that positive ( resp. negative) returns are more
+likely to follow positive ( resp. negative) returns. While this is somewhat reassuring, it is by
+no means impressive, and much simpler tools would yield similar conclusions and guidance.
+16.4.2 Q-learning with market data
+The second application is based on the ﬁnancial dataset. To reduce the dimensionality of the
+problem, we will assume that: - only one feature (price-to-book ratio) captures the state of
+the environment. This feature is processed so that it has only a limited number of possible
+values; - actions take values over a discrete set consisting of three positions: +1 (buy the
+market), -1 (sell the market), and 0 (hold no risky positions); - only two assets are traded:
+those with stock_id equal to 3 and 4 - and they both have 245 days of trading data.
+The construction of the dataset is inelegantly coded below.
+return_3=pd.Series(data_ml.loc[data_ml['stock_id']==3, 'R1M_Usd'].values)
+# Return of asset 3
+return_4=pd.Series(data_ml.loc[data_ml['stock_id']==4, 'R1M_Usd'].values)
+# Return of asset 4
+pb_3 = pd.Series(data_ml.loc[data_ml['stock_id']==3, 'Pb'].values)
+# P/B ratio of asset 3
+pb_4 = pd.Series(data_ml.loc[data_ml['stock_id']==4, 'Pb'].values)
+# P/B ratio of asset 4
+action_3 = pd.Series(np.floor(np.random.uniform(size=len(pb_3))*3) - 1 )
+# Action for asset 3 (random)
+action_4 = pd.Series(np.floor(np.random.uniform(size=len(pb_4))*3) - 1 )
+# Action for asset 4 (random)
+RL_data = pd.concat([return_3,return_4,pb_3,
+pb_4,action_3,action_4],axis=1)
+# Building the dataset
+RL_data.columns=['return_3','return_4',
+'Pb_3','Pb_4','action_3','action_4']
+# Adding columns names
+RL_data['action']=RL_data.action_3.astype(int).apply(
+str)+" " +RL_data.action_4.astype(int).apply(str) # Uniting actions
+RL_data['Pb_3'] = np.round(5*RL_data['Pb_3'])
+# Simplifying states (P/B)
+RL_data['Pb_4'] = np.round(5*RL_data['Pb_4'])
+# Simplifying states (P/B)
+RL_data['state'] = RL_data.Pb_3.astype(int).apply(
+str)+" " +RL_data.Pb_4.astype(int).apply(str) # Uniting states
+RL_data['new_state'] = RL_data['state'].shift(-1)
+# Infer new state
+RL_data['reward']=RL_data.action_3*RL_data.return_3 \
+
+--- PDF PAGE 288 ---
+16.4 Simple examples 269
++RL_data.action_4*RL_data.return_4
+# Computing rewards
+RL_data = RL_data[['action','state','reward','new_state']].dropna(
+axis=0).reset_index(drop=True)
+# Remove one missing new state, last row
+RL_data.head()
+# Show first lines
+action state reward new_state
+0 -1 0 1 1 -0.077 1 1
+1 0 -1 1 1 -0.000 1 1
+2 -1 0 1 1 -0.018 1 1
+3 1 1 1 1 0.016 1 1
+4 0 1 1 1 0.014 1 1
+Actions and states have to be merged to yield all possible combinations. To simplify the
+states, we round ﬁve times the price-to-book ratios.
+We keep the same hyperparameters as in the previous example. Columns below stand for
+actions: the ﬁrst ( resp. second) number notes the position in the ﬁrst ( resp. second) asset.
+The rows correspond to states. The scaled P/B ratios are separated by a point (,e.g., “X2.3”
+means that the ﬁrst ( resp. second) asset has a scaled P/B of 2 ( resp. 3).
+alpha = 0.1 # Learning rate
+gamma = 0.7 # Discount factor for rewards
+epsilon = 0.1 # Exploration rate
+s =looping_w_counters(RL_data['state'].unique()) # Dict for states
+a =looping_w_counters(RL_data['action'].unique()) # Dict for actions
+fit_RL2 = np.zeros(shape=(len(s),len(a))) # Placeholder for Q matrix
+r_final =0
+for z, row in RL_data.iterrows(): # loop for Q-learning
+act = a[row.action]
+r = row.reward
+s_current = s[row.state]
+s_new = s[row.new_state]
+if np.random.uniform(size=1) < epsilon: # Explore action space
+best_new = a[np.random.choice(list(a.keys()))]
+else:
+best_new = np.argmax(fit_RL2[s_new,]) # Exploit learned values
+r_final += r
+fit_RL2[s_current,act]+=alpha*(
+r+gamma*fit_RL2[s_new,best_new]-fit_RL2[s_current,act])
+fit_RL2=pd.DataFrame(
+fit_RL2,index=s.keys(),columns=a.keys()).sort_index(axis=1)
+print(fit_RL2)
+print(f'Reward (last iteration): {r_final}')
+The output shows that there are many combinations of states and actions that are not
+spanned by the data: basically, the Q function has a zero, and it is likely that the com-
+bination has not been explored. Some states seem to be more often represented (“X1.1”,
+
+--- PDF PAGE 289 ---
+270 16 Reinforcement learning
+“X1.2”, and “X2.1”), others, less (“X3.1” and “X3.2”). It is hard to make any sense of the
+recommendations. Some states close “X0.1” and “X1.1”, but the outcomes related to them
+are very diﬀerent (buy and short versus hold and buy). Moreover, there is no coherence and
+no monotonicity in actions with respect to individual state values: low values of states can
+be associated to very diﬀerent actions.
+One reason why these conclusions do not appear trustworthy pertains to the data size. With
+only 200+ time points and 99 state-action pairs (11 times 9), this yields on average only two
+data points to compute the Q function. This could be improved by testing more random
+actions, but the limits of the sample size would eventually (rapidly) be reached anyway.
+This is left as an exercise (see below).
+16.5 Concluding remarks
+Reinforcement learning has been applied to ﬁnancial problems for a long time. Early con-
+tributions in the late 1990s include Neuneier (1996), Moody and Wu (1997), Moody et al.
+(1998), and Neuneier (1998). Since then, many researchers in the computer science ﬁeld
+have sought to apply RL techniques to portfolio problems. The advent of massive datasets
+and the increase in dimensionality make it hard for RL tools to adapt well to very rich
+environments that are encountered in factor investing.
+Recently, some approaches seek to adapt RL to continuous action spaces ( Wang and Zhou
+(2019) and Aboussalah and Lee (2020)) but not to high-dimensional state spaces. These
+spaces are those required in factor investing because all ﬁrms yield hundreds of data points
+characterizing their economic situation. In addition, applications of RL in ﬁnancial frame-
+works have a particularity compared to many typical RL tasks: in ﬁnancial markets, actions
+of agents have no impact on the environment (unless the agent is able to perform mas-
+sive trades, which is rare and ill-advised because it pushes prices in the wrong direction).
+This lack of impact of actions may possibly mitigate the eﬃciency of traditional RL ap-
+proaches.
+Those are challenges that will need to be solved in order for RL to become competitive
+with alternative (supervised) methods. Nevertheless, the progressive (online-like) way RL
+works seems suitable for non-stationary environments: the algorithm slowly shifts paradigms
+as new data arrives. In stationary environments, it has been shown that RL manages to
+converge to optimal solutions ( Kong et al. (2019) and Chaouki et al. (2020)). Therefore, in
+non-stationary markets, RL could be a recourse to build dynamic predictions that adapt to
+changing macroeconomic conditions. More research needs to be carried out in this ﬁeld on
+large dimensional datasets.
+We end this chapter by underlining that reinforcement learning has also been used to esti-
+mate complex theoretical models ( Halperin and Feldshteyn (2018) and García-Galicia et al.
+(2019)). The research in the ﬁeld is incredibly diversiﬁed and is orientated towards many
+directions. It is likely that captivating work will be published in the near future.
+
+--- PDF PAGE 290 ---
+16.6 Exercises 271
+16.6 Exercises
+1. Test what happens if the process for generating returns has a negative autocorrelation.
+What is the impact on the Q function and the policy?
+2. Keeping the same two assets as in Section 16.4.2, increases the size of RL_data by
+testing all possible action combinations for each original data point. Re-run the
+Q-learning function and see what happens.
+
+--- PDF PAGE 291 ---
+Taylor & Francis 
+Taylor & Francis Group 
+http://taylorandfrancis.com 

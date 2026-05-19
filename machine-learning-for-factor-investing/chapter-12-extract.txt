@@ -1,0 +1,956 @@
+
+
+--- PDF PAGE 206 ---
+12
+Portfolio backtesting
+In this section, we introduce the notations and framework that will be used when analyzing
+and comparing investment strategies. Portfolio backtesting is often conceived and perceived
+as a quest to ﬁnd the best strategy - or at least a solidly proﬁtable one. When carried out
+thoroughly, this possibly long endeavor may entice the layman to confuse a ﬂuke for a robust
+policy. Two papers published back-to-back warn against the perils of data snooping ,
+which is related to p-hacking. In both cases, the researcher will torture the data until the
+sought result is found.
+Fabozzi and de Prado (2018) acknowledge that only strategies that work make it to the
+public, while thousands (at least) have been tested. Picking the pleasing outlier (the only
+strategy that seemed to work) is likely to generate disappointment when switching to real
+trading. In a similar vein, Arnott et al. (2019b) provide a list of principles and safeguards
+that any analyst should follow to avoid any type of error when backtesting strategies. The
+worst type is arguably false positives whereby strategies are found (often by cherrypicking)
+to outperform in one very particular setting, but will likely fail in live implementation.
+In addition to these recommendations on portfolio constructions, Arnott et al. (2019a) also
+warn against the hazards of blindly investing in smart beta products related to academic fac-
+tors. Plainly, expectations should not be set too high or face the risk of being disappointed.
+Another takeaway from their article is that economic cycles have a strong impact on
+factor returns: correlations change quickly, and drawdowns can be magniﬁed in times of
+major downturns.
+Backtesting is more complicated than it seems, and it is easy to make small mistakes that
+lead to apparently good portfolio policies. This chapter lays out a rigorous approach to this
+exercise, discusses a few caveats, and proposes a lengthy example.
+12.1 Setting the protocol
+We consider a dataset with three dimensions: time t = 1,...,T , assets n = 1,...,N ,
+and characteristics k = 1,...,K . One of these attributes must be the price of asset n at
+time t, which we will denote pt,n. From that, the computation of the arithmetic return is
+straightforward (rt,n =pt,n/pt−1,n − 1) and so is any heuristic measure of proﬁtability. For
+simplicity, we assume that time points are equidistant or uniform, i.e., that t is the index
+of a trading day or of a month for example. If each point in time t has data available for all
+assets, then this makes a dataset with I =T ×N rows.
+The dataset is ﬁrst split in two: the out-of-sample period and the initial buﬀer period. The
+buﬀer period is required to train the models for the ﬁrst portfolio composition. This period
+is determined by the size of the training sample. There are two options for this size: ﬁxed
+187
+
+--- PDF PAGE 207 ---
+188 12 Portfolio backtesting
+(usually equal to 2 to 10 years) and expanding. In the ﬁrst case, the training sample will
+roll over time, taking into account only the most recent data. In the second case, models are
+built on all of the available data, the size of which increases with time. This last option can
+create problems because the ﬁrst dates of the backtest are based on much smaller amounts
+of information compared to the last dates. Moreover, there is an ongoing debate on whether
+including the full history of returns and characteristics is advantageous or not. Proponents
+argue that this allows models to see many diﬀerent market conditions . Opponents make
+the case that old data is by deﬁnition outdated and thus useless and possibly misleading
+because it won’t reﬂect current or future short-term ﬂuctuations.
+Henceforth, we choose the rolling period option for the training sample, as depicted in
+Figure 12.1.
+Buffer
+period Out-of-sample period
+1 2 3 4
+training sample for second rebalancing
+training sample for third rebalancing
+training sample for fourth rebalancing
+the training samples roll forward
+... rebalancing dates
+FIGURE 12.1: Backtesting with rolling windows. The training set of the ﬁrst period is
+simply the buﬀer period.
+Two crucial design choices are the rebalancing frequency, and the horizon at which the
+label is computed. It is not obvious that they should be equal, but their choice should make
+sense. It can seem right to train on a 12-month forward label (which captures longer trends)
+and invest monthly or quarterly. However, it seems odd to do the opposite and train on
+short-term movements (monthly) and invest at a long horizon.
+These choices have a direct impact on how the backtest is carried out. If we note:
+• ∆h for the holding period between two rebalancing dates (in days or months),
+• ∆s for the size of the desired training sample (in days or months - not taking the number
+of assets into consideration),
+• ∆l for the horizon at which the label is computed (in days or months),
+then the total length of the training sample should be ∆s + ∆l. Indeed, at any moment t,
+the training sample should stop at t − ∆l so that the last point corresponds to a label that
+is calculated until time t. This is highlighted in Figure 12.2 in the form of the red danger
+zone. We call it the red zone because any observation which has a time index s inside the
+interval (t − ∆l,t] will engender a forward looking bias. Indeed if a feature is indexed by
+s ∈ (t − ∆l,t], then by deﬁnition, the label covers the period [s,s + ∆l] withs + ∆l >t. At
+time t, this requires knowledge of the future and is naturally not realistic.
+
+--- PDF PAGE 208 ---
+12.2 Turning signals into portfolio weights 189
+desired training sample
+required amount of data for training
+holding period
+current
+time
+t t+�ht-�l -�s t-�l
+rebalancing
+time
+danger
+zone
+FIGURE 12.2: The subtleties in rolling training samples.
+12.2 Turning signals into portfolio weights
+The predictive tools outlined in Chapters 5 to 11 are only meant to provide a signal that
+is expected to give some information on the future proﬁtability of assets. There are many
+ways that this signal can be integrated in an investment decision (see Snow (2020) for ways
+to integrate ML tools into this task).
+The ﬁrst step is selection. While a forecasting exercise can be carried out on a large
+number of assets, it is not compulsory to invest in all of these assets. In fact, for long-only
+portfolios, it would make sense to take advantage of the signal to exclude those assets that
+are presumably likely to underperform in the future. Often, portfolio policies have ﬁxed
+sizes that impose a constant number of assets. One heuristic way to exploit the signal is to
+select the assets that have the most favorable predictions and to discard the others. This
+naive idea is often used in the asset pricing literature: portfolios are formed according to the
+quantiles of underlying characteristics, and some characteristics are deemed interesting if
+the corresponding sorted portfolios exhibit very diﬀerent proﬁtabilities (e.g., high average
+return for high quantiles versus low average return for low quantiles).
+This is for instance an eﬃcient way to test the relevance of the signal. If Q portfolios
+q = 1,...,Q are formed according to the rankings of the assets with respect to the signal,
+then one would expect that the out-of-sample performance of the portfolios be monotonic
+with q. While a rigorous test of monotonicity would require to account for all portfolios
+(see, e.g., Romano and Wolf (2013)), it is often only assumed that the extreme portfolios
+suﬃce. If the diﬀerence between portfolio number 1 and portfolio number Q is substantial,
+then the signal is valuable. Whenever the investor is able to short assets, this amounts to a
+dollar neutral strategy.
+The second step is weighting. If the selection process relied on the signal, then a simple
+weighting scheme is often a good idea. Equally weighted portfolios are known to be hard to
+beat (see DeMiguel et al. (2009b)), especially compared to their cap-weighted alternative, as
+is shown in Plyakha et al. (2016). More advanced schemes include equal risk contributions
+(Maillard et al. (2010)) and constrained minimum variance ( Coqueret (2015)). Both only
+rely on the covariance matrix of the assets and not on any proxy for the vector of expected
+returns.
+For the sake of completeness, we explicitize a generalization of Coqueret (2015) which is a
+generic constrained quadratic program:
+
+--- PDF PAGE 209 ---
+190 12 Portfolio backtesting
+min
+w
+λ
+2 w′Σw − w′µ, s.t.
+w′1 = 1,
+(w − w−)′Λ(w − w−) ≤δR,
+w′w ≤δD,
+(12.1)
+where it is easy to recognize the usual mean-variance optimization in the left-hand
+side. We impose three constraints on the right-hand side. 1 The ﬁrst one is the budget
+constraint (weights sum to one). The second one penalizes variations in weights (compared
+to the current allocation, w−) via a diagonal matrix Λ that penalizes trading costs. This
+is a crucial point. Portfolios are rarely constructed from scratch and are most of the time
+adjustments from existing positions. In order to reduce the orders and the corresponding
+transaction costs, it is possible to penalize large variations from the existing portfolio. In the
+above program, the current weights are written w− and the desired ones w so that w − w−
+is the vector of deviations from the current positions. The term (w − w−)Λ(w − w−) is
+an expression that characterizes the sum of squared deviations, weighted by the diagonal
+coeﬃcients Λn,n. This can be helpful because some assets may be more costly to trade due
+to liquidity (large cap stocks are more liquid and their trading costs are lower). When δR
+decreases, the rotation is reduced because weights are not allowed to deviate too much from
+w−. The last constraint enforces diversiﬁcation via the Herﬁndhal-Hirschmann index of
+the portfolio: the smaller δD, the more diversiﬁed the portfolio.
+Recalling that there are N assets in the universe, the Lagrange form of ( 12.1) is:
+L(w) = λ
+2 w′Σw−w′µ−η(w′1N −1)+κR((w−w−)Λ(w−w−)−δR)+κD(w′w−δD), (12.2)
+and the ﬁrst order condition
+∂
+∂wL(w) =λΣw −µ −η1N + 2κRΛ(w − w−) + 2κDw = 0,
+yields
+w∗
+κ = (λΣ + 2κRΛ + 2κDIN)−1 (µ +ηλ,κR,κD 1N + 2κRΛw−), (12.3)
+with
+ηλ,κR,κD = 1 − 1′
+N(λΣ + 2κRΛ + 2κDIN)−1(µ + 2κRΛw−)
+1′
+N(λΣ + 2κRΛ + 2κDIN)−11N
+.
+This parameter ensures that the budget constraint is satisﬁed. The optimal weights in ( 12.3)
+depend on three tuning parameters: λ, κR and κD.
+- Whenλ is large, the focus is set more on risk reduction than on proﬁt maximization (which
+is often a good idea given that risk is easier to predict);
+- When κR is large, the importance of transaction costs in ( 12.2) is high and thus, in the
+limit when κR → ∞, the optimal weights are equal to the old ones w− (for ﬁnite values of
+the other parameters).
+- When κD is large, the portfolio is more diversiﬁed and (all other things equal) when
+κD → ∞, the weights are all equal (to 1/N).
+- When κR = κD = 0 , we recover the classical mean-variance weights which are a mix
+between the maximum Sharpe ratio portfolio proportional to (Σ)−1µ and the minimum
+variance portfolio proportional to (Σ)−11N .
+1Constraints often have beneﬁcial eﬀects on portfolio composition, see Jagannathan and Ma (2003) and
+DeMiguel et al. (2009a).
+
+--- PDF PAGE 210 ---
+12.3 Performance metrics 191
+This seemingly complex formula is in fact very ﬂexible and tractable. It requires some tests
+and adjustments before ﬁnding realistic values for λ,κR andκD (see exercise at the end of
+the chapter). In Pedersen et al. (2020), the authors recommend a similar form, except that
+the covariance matrix is shrunk towards the diagonal matrix of sample variances and the
+expected returns are a mix between a signal and an anchor portfolio. The authors argue that
+their general formulation has links with robust optimization (see also Kim et al. (2014)),
+Bayesian inference ( Lai et al. (2011)), matrix denoising via random matrix theory, and,
+naturally, shrinkage. In fact, shrunk expected returns have been around for quite some
+time (Jorion (1985), Kan and Zhou (2007), and Bodnar et al. (2013)) and simply seek to
+diversify and reduce estimation risk.
+12.3 Performance metrics
+The evaluation of performance is a key stage in a backtest. This section, while not exhaus-
+tive, is intended to cover the most important facets of portfolio assessment.
+12.3.1 Discussion
+While the evaluation of the accuracy of ML tools (See Section 10.1) is of course valuable
+(and imperative!), the portfolio returns are the ultimate yardstick during a backtest. One
+essential element in such an exercise is a benchmark because raw and absolute metrics
+don’t mean much on their own.
+This is not only true at the portfolio level, but also at the ML engine level. In most of
+the trials of the previous chapters, the MSE of the models on the testing set revolves
+around 0.037. An interesting ﬁgure is the variance of one-month returns on this set, which
+corresponds to the error made by a constant prediction of 0 all the time. This ﬁgure is equal
+to 0.037, which means that the sophisticated algorithms don’t really improve on a naive
+heuristic. This benchmark is the one used in the out-of-sample R2 of Gu et al. (2020).
+In portfolio choice, the most elementary allocation is the uniform one, whereby each asset
+receives the same weight. This seemingly simplistic solution is in fact an incredible bench-
+mark, one that is hard to beat consistently (see DeMiguel et al. (2009b) and Plyakha et al.
+(2016)). Theoretically, uniform portfolios are optimal when uncertainty, ambiguity, or esti-
+mation risk is high (Pﬂug et al. (2012), Maillet et al. (2015)), and empirically, it cannot be
+outperformed even at the factor level ( Dichtl et al. (2021b)). Below, we will pick an equally
+weighted (EW) portfolio of all stocks as our benchmark.
+12.3.2 Pure performance and risk indicators
+We then turn to the deﬁnition of the usual metrics used both by practitioners and academics
+alike. Henceforth, we write rP = (rP
+t )1≤t≤T and rB = (rB
+t )1≤t≤T for the returns of the
+portfolio and those of the benchmark, respectively. When referring to some generic returns,
+we simply write rt. There are many ways to analyze them, and most of them rely on their
+distribution.
+The simplest indicator is the average return:
+
+--- PDF PAGE 211 ---
+192 12 Portfolio backtesting
+¯rP =µP = E[rP ] ≈ 1
+T
+T∑
+t=1
+rP
+t , ¯rB =µB = E[rB] ≈ 1
+T
+T∑
+t=1
+rB
+t ,
+where, obviously, the portfolio is noteworthy if E[rP ]> E[rB]. Note that we use the arith-
+metic average above, but the geometric one is also an option, in which case:
+˜µP ≈
+( T∏
+t=1
+(1 +rP
+t )
+)1/T
+− 1, ˜µB ≈
+( T∏
+t=1
+(1 +rB
+t )
+)1/T
+− 1.
+The beneﬁt of this second deﬁnition is that it takes the compounding of returns into account
+and hence compensates for volatility pumping. To see this, consider a very simple two-
+period model with returns −r and +r. The arithmetic average is zero, but the geometric
+one
+√
+1 −r2 − 1 is negative.
+Akin to accuracy, its ratios evaluate the proportion of times when the position is in the
+right direction (long when the realized return is positive and short when it is negative).
+Hence, hit ratios evaluate the propensity to make good guesses. This can be computed at
+the asset level (the proportion of positions in the correct direction 2) or at the portfolio
+level. In all cases, the computation can be performed on raw returns or on relative returns
+(e.g., compared to a benchmark). A meaningful hit ratio is the proportion of times that a
+strategy beats its benchmark. This is of course not suﬃcient, as many small gains can be
+oﬀset by a few large losses.
+Lastly, here is one important precision. In all examples of supervised learning tools in the
+book, we compared the hit ratios to 0.5. This is in fact wrong because if an investor is bullish,
+he or she may always bet on upward moves. In this case, the hit ratio is the percentage
+of time that returns are positive. Over the long run, this probability is above 0.5. In our
+sample, it is equal to 0.556, which is well above 0.5. This could be viewed as a benchmark
+to be surpassed.
+Pure performance measures are almost always accompanied by risk measures . The second
+moment of returns is usually used to quantify the magnitude of ﬂuctuations of the portfolio.
+A large variance implies sizable movements in returns, and hence in portfolio values. This
+is why the standard deviation of returns is called the volatility of the portfolio.
+σ2
+P = V[rP ] ≈ 1
+T − 1
+T∑
+t=1
+(rP
+t −µP )2, σ 2
+B = V[rB] ≈ 1
+T − 1
+T∑
+t=1
+(rB
+t −µB)2.
+In this case, the portfolio can be preferred if it is less risky compared to the benchmark,
+i.e., when σ2
+P <σ 2
+B and when average returns are equal (or comparable).
+Higher order moments of returns are sometimes used (skewness and kurtosis), but they are
+far less common. We refer for instance to Harvey et al. (2010) for one method that takes
+them into account in the portfolio construction process.
+2A long position in an asset with positive return or a short position in an asset with negative return.
+
+--- PDF PAGE 212 ---
+12.3 Performance metrics 193
+For some people, the volatility is an incomplete measure of risk. It can be argued that
+it should be decomposed into ‘good’ volatility (when prices go up) versus ‘bad’ volatility
+when they go down. The downward semi-variance is computed as the variance taken over
+the negative returns:
+σ2
+− ≈ 1
+card(rt < 0)
+T∑
+t=1
+(rt −µP )21{rt<0}.
+The average return and the volatility are the typical moment-based metrics used by practi-
+tioners. Other indicators rely on diﬀerent aspects of the distribution of returns with a focus
+on tails and extreme events. The V alue-at-Risk(VaR) is one such example. If Fr is the
+empirical cdf of returns, the VaR at a level of conﬁdence α (often taken to be 95%) is
+VaRα(rt) =Fr(1 −α).
+It is equal to the realization of a bad scenario (of return) that is expected to happen (1−α)%
+of the time on average. An even more conservative measure is the so-called Conditional Value
+at Risk (CVaR), also known as expected shortfall, which computes the average loss of the
+worst (1 −α)% scenarios. Its empirical evaluation is
+CVaRα(rt) = 1
+Card(rt < VaRα(rt))
+∑
+rt<VaRα(rt)
+rt.
+Going crescendo in the severity of risk measures, the ultimate evaluation of loss is the
+maximum drawdown . It is equal to the maximum loss suﬀered from the peak value of
+the strategy. If we write Pt for the time-t value of a portfolio, the drawdown is
+DP
+T = max
+0≤t≤T
+Pt −PT,
+and the maximum drawdown is
+MDP
+T = max
+0≤s≤T
+(
+max
+0≤t≤s
+Pt −Ps, 0
+)
+.
+12.3.3 F actor-based evaluation
+In the spirit of factor models, performance can also be assessed through the lens of exposures.
+If we recall the original formulation from Equation ( 3.1):
+rt,n =αn +
+K∑
+k=1
+βt,k,nft,k +ϵt,n,
+then the estimated ˆαn is the performance that cannot be explained by the other factors.
+
+--- PDF PAGE 213 ---
+194 12 Portfolio backtesting
+When returns are excess returns (over the risk-free rate) and when there is only one factor,
+the market factor, then this quantity is called Jensen’s alpha ( Jensen (1968)). Often, it is
+simply referred to as alpha. The other estimate, ˆβt,M,n (M for market), is the market beta.
+Because of the rise of factor investing, it has become customary to also report the alpha of
+more exhaustive regressions. Adding the size and value premium (as in Fama and French
+(1993)) and even momentum ( Carhart (1997)) helps understand if a strategy generates
+value beyond that which can be obtained through the usual factors.
+12.3.4 Risk-adjusted measures
+Now, the tradeoﬀ between the average return and the volatility is a cornerstone in modern
+ﬁnance, since Markowitz (1952). The simplest way to synthesize both metrics is via the
+information ratio :
+IR(P,B ) = µP−B
+σP−B
+,
+where the index P −B implies that the mean and standard deviations are computed on the
+long-short portfolio with returns rP
+t −rB
+t . The denominator σP−B is sometimes called the
+tracking error .
+The most widespread information ratio is the Sharpe ratio (Sharpe (1966)) for which
+the benchmark is some riskless asset. Instead of directly computing the information ratio
+between two portfolios or strategies, it is often customary to compare their Sharpe ratios.
+Simple comparisons can beneﬁt from statistical tests (see, e.g., Ledoit and Wolf (2008)).
+More extreme risk measures can serve as denominator in risk-adjusted indicators. The Man-
+aged Account Report (MAR) ratio is, for example, computed as
+MARP = ˜µP
+MDP,
+while the Treynor ratio is equal to
+Treynor = µP
+ˆβM
+,
+i.e., the (excess) return divided by the market beta (see Treynor (1965)). This deﬁnition
+was generalized to multifactor expositions by Hübner (2005) into the generalized Treynor
+ratio:
+GT =µP
+∑K
+k=1
+¯fk
+∑K
+k=1
+ˆβk ¯fk
+,
+where the ¯fk are the sample average of the factors ft,k. We refer to the original article for
+a detailed account of the analytical properties of this ratio.
+
+--- PDF PAGE 214 ---
+12.4 Common errors and issues 195
+12.3.5 T ransaction costs and turnover
+Updating portfolio composition is not free. In all generality, the total cost of one rebalancing
+at time t is proportional to Ct = ∑N
+n=1 |∆wt,n|ct,n, where ∆wt,n is the change in position
+for asset n and ct,n the corresponding fee. This last quantity is often hard to predict, thus
+it is customary to use a proxy that depends for instance on market capitalization (large
+stocks have more liquid shares and thus require smaller fees) or bid-ask spreads (smaller
+spreads mean smaller fees).
+As a ﬁrst order approximation, it is often useful to compute the average turnover:
+Turnover = 1
+T − 1
+T∑
+t=2
+N∑
+n=1
+|wt,n −wt−,n|,
+where wt,n are the desired t-time weights in the portfolio and wt−,n are the weights just
+before the rebalancing. The positions of the ﬁrst period (launching weights) are exluded
+from the computation by convention. Transaction costs can then be proxied as a multiple
+of turnover (times some average or median cost in the cross-section of ﬁrms). This is a ﬁrst
+order estimate of realized costs that does not take into consideration the evolution of the
+scale of the portfolio. Nonetheless, a rough ﬁgure is much better than none at all.
+Once transaction costs (TCs) have been annualized, they can be deducted from average
+returns to yield a more realistic picture of proﬁtability. In the same vein, the transaction
+cost-adjusted Sharpe ratio of a portfolio P is given by
+SRTC = µP −TC
+σP
+. (12.4)
+Transaction costs are often overlooked in academic articles but can have a sizable impact in
+real life trading (see, e.g., Novy-Marx and Velikov (2015)). DeMiguel et al. (2020) show how
+to use factor investing (and exposures) to combine and oﬀset positions and reduce overall
+fees.
+12.4 Common errors and issues
+12.4.1 F orward looking data
+One of the most common mistakes in portfolio backtesting is the use of forward looking
+data. It is for instance easy to fall in the trap of the danger zone depicted in Figure 12.2.
+In this case, the labels used at time t are computed with knowledge of what happens at
+times t + 1,t + 2, etc. It is worth triple checking every step in the code to make sure that
+strategies are not built on prescient data.
+12.4.2 Backtest overﬁtting
+The second major problem is backtest overﬁtting. The analogy with training set overﬁtting
+is easy to grasp. It is a well-known issue and was formalized for instance in White (2000)
+and Romano and Wolf (2005). In portfolio choice, we refer to Bajgrowicz and Scaillet (2012)
+and Bailey and de Prado (2014) and the references therein.
+
+--- PDF PAGE 215 ---
+196 12 Portfolio backtesting
+At any given moment, a backtest depends on only one particular dataset. Often, the result
+of the ﬁrst backtest will not be satisfactory - for many possible reasons. Hence, it is tempting
+to have another try, when altering some parameters, that were probably not optimal. This
+second test may be better, but not quite good enough - yet. Thus, in a third trial, a new
+weighting scheme can be tested, along with a new forecasting engine (more sophisticated).
+Iteratively, the backtester can only end up with a strategy that performs well enough, it is
+just a matter of time and trials.
+One consequence of backtest overﬁtting is that it is illusory to hope for the same Sharpe
+ratios in live trading as those obtained in the backtest. Reasonable professionals divide the
+Sharpe ratio by two at least ( Harvey and Liu (2015), Suhonen et al. (2017)). In Bailey and
+de Prado (2014), the authors even propose a statistical test for Sharpe ratios, provided that
+some metrics of all tested strategies are stored in memory. The formula for deﬂated Sharpe
+ratios is:
+t =φ
+(
+(SR −SR∗)
+√
+T − 1
+1 −γ3SR + γ4−1
+4 SR2
+)
+, (12.5)
+where SR is the Sharpe Ratio obtained by the best strategy among all that were tested,
+and
+SR∗ = E[SR] +
+√
+V[SR]
+(
+(1 −γ)φ−1
+(
+1 − 1
+N
+)
++γφ−1
+(
+1 − 1
+Ne
+))
+,
+is the theoretical average maximum SR. Moreover,
+• T is the number of trading dates;
+• γ3 and γ4 are the skewness and kurtosis of the returns of the chosen (best) strategy;
+• φ is the cdf of the standard Gaussian law and γ ≈ 0, 577 is the Euler-Mascheroni
+constant;
+• N refers to the number of strategy trials.
+If t deﬁned above is below a certain threshold (e.g., 0.95), then the SR cannot be deemed
+signiﬁcant: the best strategy is not outstanding compared to all of those that were
+tested. Most of the time, sadly, that is the case. In Equation ( 12.5), the realized SR must
+be above the theoretical maximum SR∗ and the scaling factor must be suﬃciently large to
+push the argument inside φ close enough to two, so that t surpasses 0.95.
+In the scientiﬁc community, test overﬁtting is also known as p-hacking. It is rather common
+in ﬁnancial economics, and the reading of Harvey (2017) is strongly advised to grasp the
+magnitude of the phenomenon. p-hacking is also present in most ﬁelds that use statistical
+tests (see, e.g., Head et al. (2015), to cite one reference). There are several ways to cope
+with p-hacking:
+1. don’t rely on p-values (Amrhein et al. (2019)),
+2. use detection tools ( Elliott et al. (2019)),
+3. or, ﬁnally, use advanced methods that process arrays of statistics (e.g., the Bayesianized
+versions of p-values to include some prior assessment from Harvey (2017), or other tests
+such as those proposed in Romano and Wolf (2005) and Simonsohn et al. (2014)).
+The ﬁrst option is wise, but the drawback is that the decision process is then left to another
+arbitrary yardstick.
+
+--- PDF PAGE 216 ---
+12.5 Implication of non-stationarity: forecasting is hard 197
+12.4.3 Simple safeguards
+As is mentioned at the beginning of the chapter, two common sense references for backtesting
+are Fabozzi and de Prado (2018) and Arnott et al. (2019b). The pieces of advice provided
+in these two articles are often judicious and thoughtful.
+One additional comment pertains to the output of the backtest. One simple, intuitive, and
+widespread metric is the transaction cost-adjusted Sharpe ratio deﬁned in Equation (12.4).
+In the backtest, let us call SRB
+TC the corresponding value for the benchmark, which we
+like to deﬁne as the equally-weighted portfolio of all assets in the trading universe (in our
+dataset, roughly 1000 US equities). If the SRP
+TC of the best strategy is above 2 ×SRB
+TC ,
+then there is probably a glitch somewhere in the backtest.
+This criterion holds under two assumptions:
+1. a suﬃciently long enough out-of-sample period, and
+2. long-only portfolios.
+It is unlikely that any realistic strategy can outperform a solid benchmark by a very wide
+margin over the long term. Being able to improve the benchmark’s annualized return by
+150 basis points (with comparable volatility) is already a great achievement. Backtests that
+deliver returns more than 5% above those of the benchmark are dubious.
+12.5 Implication of non-stationarity: forecasting is hard
+This subsection is split into two parts: in the ﬁrst, we discuss the reason that makes fore-
+casting such a diﬃcult task, and in the second we present an important theoretical result
+originally developed towards machine learning but that sheds light on any discipline con-
+fronted with out-of-sample tests. An interesting contribution related to this topic is the
+study from Farmer et al. (2019). The authors assess the predictive ﬁt of linear models
+through time; they show that the ﬁt is strongly varying: sometimes the model performs
+very well, sometimes, not so much. There is no reason why this should not be the case for
+ML algorithms as well.
+12.5.1 General comments
+The careful reader must have noticed that throughout Chapters 5 to 11, the performance of
+ML engines is underwhelming. These disappointing results are there on purpose and high-
+light the crucial truth that machine learning is no panacea, no magic wand, no philosopher’s
+stone that can transform data into golden predictions. Most ML-based forecasts fail. This
+is in fact not only true for very enhanced and sophisticated techniques, but also for simpler
+econometric approaches (Dichtl et al. (2021a)), which again underlines the need to replicate
+results to challenge their validity.
+One reason for that is that datasets are full of noise, and extracting the slightest amount of
+signal is a tough challenge (we recommend a careful reading of the introduction of Timmer-
+mann (2018) for more details on this topic). One rationale for that is the ever time-varying
+nature of factor analysis in the equity space. Some factors can perform very well during one
+year and then poorly the next year, and these reversals can be costly in the context of fully
+automated data-based allocation processes.
+
+--- PDF PAGE 217 ---
+198 12 Portfolio backtesting
+In fact, this is one major diﬀerence with many ﬁelds for which ML has made huge advances.
+In image recognition, numbers will always have the same shape, and so will cats, buses,
+etc. Likewise, a verb will always be a verb, and syntaxes in languages do not change. This
+invariance, though sometimes hard to grasp, 3 is nonetheless key to the great improvement
+both in computer vision and natural language processing.
+In factor investing, there does not seem to be such invariance (see Cornell (2020)). There is
+no factor and no (possibly non-linear) combination of factors that can explain and accurately
+forecast returns over long periods of several decades. 4 The academic literature has yet to
+ﬁnd such a model; but even if it did, a simple arbitrage reasoning would logically invalidate
+its conclusions in future datasets.
+12.5.2 The no free lunch theorem
+We start by underlying that the no free lunch theorem in machine learning has nothing to do
+with the asset pricing condition with the same name (see, e.g., Delbaen and Schachermayer
+(1994), or, more recently, Cuchiero et al. (2016)). The original formulation was given by
+Wolpert (1992a), but we also recommend a look at the more recent reference Ho and Pepyne
+(2002). There are in fact several theorems, and two of them can be found in Wolpert and
+Macready (1997).
+The statement of the theorem is very abstract and requires some notational conventions.
+We assume that any training sample S = ({x1,y 1}
+,..., {xI, y I }) is such that there exists
+an oracle function f that perfectly maps the features to the labels: yi =f(xi). The oracle
+functionf belongs to a very large set of functions F . In addition, we write H for the set of
+functions to which the forecaster will resort to approximate f . For instance, H can be the
+space of feed-forward neural networks, the space of decision trees, or the reunion of both.
+Elements of H are written h and P[h|S] stands for the (largely unknown) distribution of h
+knowing the sample S. Similarly, P[f |S] is the distribution of oracle functions knowing S.
+Finally, the features have a given law, P[x].
+Let us now consider two models, say, h1 and h2. The statement of the theorem is usually
+formulated with respect to a classiﬁcation task. Knowing S, the error when choosing hk
+induced by samples outside of the training sample S can be quantiﬁed as:
+Ek(S) =
+∫
+f,h
+∫
+x/∈S
+(1 −δ(f(x),hk(x)))
+ 
+error term
+P[f |S]P[h|S]P[x]  
+distributional terms
+, (12.6)
+where δ(·, ·) is the delta Kronecker function:
+δ(x,y ) =
+{ 0 if x ̸=y
+1 if x =y . (12.7)
+One of the no free lunch theorems states that E1(S) = E2(S), that is, that with the
+sole knowledge of S, there can be no superior algorithm, on average. In order to build a
+performing algorithm, the analyst or econometrician must have prior views on the structure
+of the relationship between y and x and integrate these views in the construction of the
+model. Unfortunately, this can also yield underperforming models if the views are incorrect.
+3We invite the reader to have a look at the thoughtful albeit theoretical paper by Arjovsky et al. (2019).
+4In the thread https://twitter.com/fchollet/status/1177633367472259072, François Chollet, the cre-
+ator of Keras argues that ML predictions based on price data cannot be proﬁtable in the long term. Given
+the wide access to ﬁnancial data, it is likely that the statement holds for predictions stemming from factor-
+related data as well.
+
+--- PDF PAGE 218 ---
+12.6 First example: a complete backtest 199
+12.6 First example: a complete backtest
+We ﬁnally propose a fully detailed example of one implementation of a ML-based strategy
+run on a careful backtest. What follows is a generalization of the content of Section 5.2.2 .
+In the same spirit, we split the backtest in four parts:
+1. creation/initialization of variables;
+2. deﬁnition of the strategies in one main function;
+3. backtesting loop itself;
+4. performance indicators.
+Accordingly, we start with initializations.
+import datetime as dt
+from datetime import datetime
+sep_oos= "2007-01-01"
+# Starting point for backtest
+ticks= list(data_ml['stock_id'].unique())
+# List of all asset ids
+N= len(ticks)
+# Max number of assets
+t_oos= list(returns.index[returns.index>sep_oos].values)
+# Out-of-sample dates
+t_as= list(returns.index.values)
+# Out-of-sample dates
+Tt= len(t_oos)
+# Nb of dates
+nb_port = 2
+# Nb of portfolios/strategies
+portf_weights= np.zeros(shape=(Tt, nb_port, max(ticks)+1))
+# Initialize portfolio weights
+portf_returns= np.zeros(shape=(Tt, nb_port))
+# Initialize portfolio returns
+This ﬁrst step is crucial; it lays the groundwork for the core of the backtest. We consider
+only two strategies: one ML-based and the EW (1/N) benchmark. The main (weighting)
+function will consist of these two components, but we deﬁne the sophisticated one in a
+dedicated wrapper. The ML-based weights are derived from XGBoost predictions with 80
+trees, a learning rate of 0.3 and a maximum tree depth of 4. This makes the model complex
+but not exceedingly so. Once the predictions are obtained, the weighting scheme is simple:
+it is an EW portfolio over the best half of the stocks (those with above median prediction).
+In the function below, all parameters (e.g., the learning rate, eta, or the number of trees
+nr
+ounds) are hard-coded. They can easily be passed in arguments next to the data inputs.
+One very important detail is that, in contrast to the rest of the book, the label is the 12-
+month future return. The main reason for this is rooted in the discussion from Section 4.6.
+Also, to speed up the computations, we remove the bulk of the distribution of the labels
+
+--- PDF PAGE 219 ---
+200 12 Portfolio backtesting
+and keep only the top 20% and bottom 20%, as is advised in Coqueret and Guida (2020).
+The ﬁltering levels could also be passed as arguments.
+def weights_xgb(train_data, test_data, features):
+train_features= train_data[features] # Indep. variable
+train_label= train_data['R12M_Usd']/ np.exp(train_data['Vol1Y_Usd'])
+# Dep. variable ##T##
+ind = (train_label < np.quantile(
+train_label, 0.2))|(train_label > np.quantile(train_label, 0.
+↪→8))# Filter
+train_features= train_features.loc[ind] # Filtered features
+train_label= train_label.loc[ind] # Filtered label
+train_matrix=xgb.DMatrix(train_features, label =train_label) # XGB /uni2423
+↪→format!
+params={'eta' : 0.3, # Learning rate
+'objective' : "reg:squarederror", # Objective function
+'max_depth' : 4} # Maximum depth of trees
+fit_xgb =xgb.train(params, train_matrix,num_boost_round =80)
+# Number of trees used
+test_features=test_data[features]
+# Test sample => XGB format
+test_matrix=xgb.DMatrix(test_features) # XGB format!
+pred = fit_xgb.predict(test_matrix) # Single prediction
+w_names=test_data["stock_id"] # Stocks' list
+w = pred > np.median(pred) # Keep only the 50% best predictions
+w = w / np.sum(w) # Best predictions, equally-weighted
+return w, w_names
+Compared to the structure proposed in Section 6.4.6, the diﬀerences are that the label is
+not only based on long-term returns, but it also relies on a volatility component. Even
+though the denominator in the label is the exponential quantile of the volatility, it seems
+fair to say that it is inspired by the Sharpe ratio and that the model seeks to explain and
+forecast a risk-adjusted return instead of a raw return. A stock with very low volatility will
+have its return unchanged in the label, while a stock with very high volatility will see its
+return divided by a factor close to three (exp(1)=2.718).
+This function is then embedded in the global weighting function which only wraps two
+schemes: the EW benchmark and the ML-based policy.
+def portf_compo(train_data, test_data, features, j):
+if j == 0: # This is the benchmark
+N = len(test_data["stock_id"]) # Test data dictates allocation
+w = np.repeat(1/N,N) # EW portfolio
+w_names=test_data["stock_id"] # Asset names
+return w, w_names
+elif j == 1: # This is the ML strategy. /uni2423
+↪→
+return weights_xgb(train_data, test_data, features)
+Equipped with this function, we can turn to the main backtesting loop. Given the fact that
+we use a large-scale model, the computation time for the loop is large (possibly a few hours
+
+--- PDF PAGE 220 ---
+12.6 First example: a complete backtest 201
+on a slow machine with CPU). Resorting to functional programming can speed up the loop.
+Also, a simple benchmark equally weighted portfolio can be coded with functions only.
+m_offset = 12 # Offset in months for buffer period(label)
+train_size = 5 # Size of training set in years
+for t in range(len(t_oos)-1): # Stop before last date: no fwd ret.!
+ind= (
+data_ml['date'] < datetime.strftime(
+datetime.strptime(t_oos[t], "%Y-%m-%d")-dt.timedelta(
+m_offset*30), "%Y-%m-%d")) & (
+data_ml['date'] > datetime.strftime(
+datetime.strptime(t_oos[t], "%Y-%m-%d")-dt.timedelta(
+m_offset*30)-dt.timedelta(365 * train_size), "%Y-%m-%d"))
+train_data= data_ml.loc[ind,:] # Train sample
+test_data= data_ml.loc[data_ml['date'] == t_oos[t],:] # Test sample
+realized_returns= test_data["R1M_Usd"]
+# Computing returns via: 1M holding period!
+for j in range(nb_port):
+temp_weights, stocks = portf_compo(
+train_data, test_data, features, j) # Weights
+portf_weights[t,j,stocks] = temp_weights # Allocate weights
+portf_returns[t,j] = np.sum(temp_weights * realized_returns)
+# Compute returns
+There are two important comments to be made on the above code. The ﬁrst comment
+pertains to the two parameters that are deﬁned in the ﬁrst lines. They refer to the size
+of the training sample (5 years) and the length of the buﬀer period shown in Figure 12.2.
+This buﬀer period is imperative because the label is based on a long-term (12-month)
+return. This lag is compulsory to avoid any forward-looking bias in the backtest.
+Below, we create a function that computes the turnover (variation in weights). It requires
+both the weight values as well as the returns of all assets because the weights just before a
+rebalancing depend on the weights assigned in the previous period, as well as on the returns
+of the assets that have altered these original weights during the holding period.
+def turnover(weights, asset_returns, t_oos):
+turn = 0
+for t in range(1, len(t_oos)):
+realised_returns = asset_returns[returns.index == t_oos[t]].
+↪→values
+prior_weights = weights[t-1] * (1+realised_returns)
+# Before rebalancing
+turn =turn + np.sum(np.abs(
+weights[t] - prior_weights/np.sum(prior_weights)))
+return turn/(len(t_oos)-1)
+Once turnover is deﬁned, we embed it into a function that computes several key indicators.
+def perf_met(portf_returns, weights, asset_returns, t_oos):
+avg_ret = np.nanmean(portf_returns)
+# Arithmetic mean
+
+--- PDF PAGE 221 ---
+202 12 Portfolio backtesting
+vol = np.nanstd(portf_returns, ddof =1)
+# Volatility
+Sharpe_ratio = avg_ret / vol
+# Sharpe ratio
+VaR_5 = np.quantile(portf_returns, 0.05)
+# Value-at-risk
+turn = turnover(weights, asset_returns, t_oos)
+# using the turnover function
+met = [avg_ret, vol, Sharpe_ratio, VaR_5, turn]
+# Aggregation of all of this
+return met
+Lastly, we build a function that loops on the various strategies.
+def perf_met_multi(portf_returns,weights,asset_returns,t_oos,strat_name):
+J = weights.shape[1] # Number of strategies
+met = [] # Initialization of metrics
+for j in range(J): # One slighlty less ugly loop
+temp_met=perf_met(portf_returns[:,j],weights[:,j,:
+↪→],asset_returns,t_oos)
+met.append(temp_met)
+return pd.DataFrame(
+met, index =strat_name,
+columns=['avg_ret','vol','Sharpe_ratio','VaR_5','turn'])
+# Stores the name of the strat
+Given the weights and returns of the portfolios, it remains to compute the returns of the
+assets to plug them in the aggregate metrics function.
+asset_returns = data_ml[['date', 'stock_id', 'R1M_Usd']].pivot(
+index='date', columns ='stock_id',values='R1M_Usd')
+na = list(set(np.arange(
+max(asset_returns.columns)+1)).difference(set(asset_returns.
+↪→columns)))
+# find the missing stock_id
+asset_returns[na]=0 # Adding into asset return dataframe
+asset_returns = asset_returns.loc[:,sorted(asset_returns.columns)]
+asset_returns.fillna(0, inplace =True) # Zero returns for missing points
+perf_met_multi(portf_returns,portf_weights,
+asset_returns,t_oos,strat_name=["EW","XGB_SR"])
+avg_ret vol Sharpe_ratio VaR_5 turn
+EW 0.009697 0.056429 0.171848 -0.077125 0.071451
+XGB_SR 0.012603 0.063768 0.197635 -0.083359 0.567993
+The ML-based strategy performs ﬁnally well! The gain is mostly obtained by the average
+return, while the volatility is higher than that of the benchmark. The net eﬀect is that the
+Sharpe ratio is improved compared to the benchmark. The augmentation is not breath-
+taking, but (hence?) it seems reasonable. It is noteworthy to underline that turnover is
+substantially higher for the sophisticated strategy. Removing costs in the numerator (say,
+
+--- PDF PAGE 222 ---
+12.6 First example: a complete backtest 203
+0.005 times the turnover, as in Goto and Xu (2015), which is a conservative ﬁgure) only
+mildly reduces the superiority in Sharpe ratio of the ML-based strategy.
+Finally, it is always tempting to plot the corresponding portfolio values, and we display two
+related graphs in Figure 12.3.
+g1 = pd.DataFrame(
+[t_oos, np.cumprod(
+1+portf_returns[:,0]), np .cumprod(
+1+portf_returns[:,1])],index = ["date","benchmark","ml_based"]).T
+# Creating cumulated timeseries
+g1.reset_index(inplace=True) # Data wrangling
+g1['date_month']=pd.to_datetime(g1['date']).dt.month
+# Creating a new column to select dataframe partition for secong plot (y/uni2423
+↪→perf)
+g1.set_index('date',inplace=True)
+# Setting date index for plots
+g2=g1[g1['date_month']==12]
+# Selecting pseudo-end of year NAV
+g2=g2.append(g1.iloc[[0]])
+# Adding the first date of Jan 2007
+g2.sort_index(inplace=True) # Sorting dates
+g1[["benchmark","ml_based"]].plot(figsize=[16,6],ylabel='Cumulated/uni2423
+↪→value')
+# plot evidently!
+g2[["benchmark","ml_based"]].pct_change(1).plot.bar(
+figsize=[16,6],ylabel='Yearly performance') # plot evidently!
+FIGURE 12.3: Graphical representation of the performance of the portfolios.
+
+--- PDF PAGE 223 ---
+204 12 Portfolio backtesting
+Out of the 12 years of the backtest, the advanced strategy outperforms the benchmark
+during 10 years. It is less hurtful in two of the four years of aggregate losses (2015 and
+2018). This is a satisfactory improvement because the EW benchmark is tough to beat!
+12.7 Second example: backtest overﬁtting
+To end this chapter, we quantify the concepts of Section 12.4.2. First, we build a function
+that is able to generate performance metrics for simple strategies that can be evaluated
+in batches. The strategies are pure factor bets and depend on three inputs: the chosen
+characteristic (e.g., market capitalization), a threshold level (quantile of the characteristic),
+and a direction (long position in the top or bottom of the distribution).
+def strat(data, feature, thresh, direction):
+data_tmp = data[[feature, 'date', 'R1M_Usd']].copy()
+# Data for individual feature
+data_tmp['decision'] = direction*data_tmp[feature] > direction*thresh
+# Investment decision as a Boolean
+data_tmp = data_tmp.groupby('date').apply(
+# Date-by-date analysis
+lambda x: np.sum(x[ 'decision']/np.
+↪→sum(x['decision'])*x['R1M_Usd']))
+# Asset contribution, weight * return
+avg = np.nanmean(data_tmp)
+# Portfolio average return
+sd = np.nanstd(data_tmp, ddof =1)
+# Portfolio volatility non-annualised
+SR = avg / sd # Portfolio sharpe ratio
+return np.around([avg, sd, SR],4)
+Then, we test the function on a triplet of arguments. We pick the price-to-book (Pb) ratio.
+The position is positive and the threshold is 0.3, which means that the strategy buys the
+stocks that have a Pb value above the 0.3 quantile of the distribution.
+strat(data_ml, "Pb", 0.3, 1)
+# Large cap
+array([0.0102, 0.0496, 0.2065])
+The output keeps three quantities that will be useful to compute the statistic (12.5). We
+must now generate these indicators for many strategies. We start by creating the grid of
+parameters.
+import itertools
+feature = ["Div_Yld","Ebit_Bv","Mkt_Cap_6M_Usd",
+"Mom_11M_Usd","Pb","Vol1Y_Usd"]
+thresh = np.arange(0.2, 0.9, 0.1) # Threshold
+direction = np.array([1,-1]) # Decision direction
+
+--- PDF PAGE 224 ---
+12.7 Second example: backtest overﬁtting 205
+This makes 84 strategies in total. We can proceed to see how they fare. We plot the corre-
+sponding Sharpe ratios below in Figure 12.4. The top plot shows the strategies that invest
+in the bottoms of the distributions of characteristics, while the bottom plot pertains to the
+portfolios that are long in the lower parts of these distributions.
+grd = [] # Empty placeholder, parameters for the grid search
+for f, t, d in itertools.product(feature,thresh,direction):
+# Parameters for the grid search
+strat_data=[]
+# Empty placeholder, dataframe for the function
+strat_data=pd.DataFrame(strat(data_ml,f,t,d)).T
+# Function on which to apply the grid search
+strat_data.rename(columns={0: 'avg', 1: 'sd',2:'SR'}, inplace=True )
+# Change columns names
+strat_data[['feature', 'thresh', 'direction']]=f, t, d
+# Feeding parameters to construct the dataframe
+grd.append(strat_data) # Appending/inserting
+grd = pd.concat(grd)[['feature','thresh','direction','avg','sd','SR']]
+# Putting all together and reordering columns
+grd[grd['direction']==-1].pivot(index='thresh',
+columns='feature',values='SR').plot(
+figsize=[16,6],ylabel='Direction = -1') # Plot!
+grd[grd['direction']==1].pivot(index='thresh',
+columns='feature',values='SR').plot(
+figsize=[16,6],ylabel='Direction = 1') # Plot!
+FIGURE 12.4: Sharpe ratios of all backtested strategies.
+
+--- PDF PAGE 225 ---
+206 12 Portfolio backtesting
+The last step is to compute the statistic ( 12.5). We code it here:
+from scipy import special as special
+from scipy import stats as stats
+def DSR(SR, Tt, M, g3, g4, SR_m, SR_v): # First, we build the function
+gamma =- special.digamma(1) # Euler-Mascheroni constant
+SR_star = SR_m + np.sqrt(SR_v)*(
+(1-gamma)*stats.norm.ppf(1-1/M)+gamma*stats.norm.ppf(1-1/M/np.
+↪→exp(1)))
+# SR*
+num = (SR-SR_star) * np.sqrt(Tt-1) # Numerator
+den = np.sqrt(1-g3*SR + (g4-1)/4*SR**2) # Denominator
+return round(stats .norm.cdf(num/den),4)
+All that remains to do is to evaluate the arguments of the function. The “best” strategy is
+the one on the top left corner of Figure 12.4, and it is based on market capitalization.
+M = grd.shape[0] # Number of strategies we tested
+SR = np.max(grd['SR']) # The SR we want to test
+SR_m = np.mean(grd['SR']) # Average SR across all strategies
+SR_v = np.var(grd['SR'], ddof =1) # Std dev of SR
+data_tmp = data_ml[['Mkt_Cap_6M_Usd', 'date', 'R1M_Usd']].copy()
+# feature = Mkt_Cap
+data_tmp.rename({'Mkt_Cap_6M_Usd':'feature'}, axis =1, inplace =True)
+data_tmp['decision'] = data_tmp['feature'] < 0.2
+# Investment decision: 0.2 is the best threshold
+returns_DSR = data_tmp.groupby('date').apply(
+# Date-by-date analysis
+lambda x:np.sum(x['decision']/np.sum(x['decision'])*x['R1M_Usd']))
+# Asset contribution, weight * return
+g3 = stats.skew(returns_DSR)
+# Function/method from Scipy.stats
+g4 = stats.kurtosis(returns_DSR, fisher=False )
+# Function/method from Scipy.stats
+Tt = returns_DSR.shape[0]
+# Number of dates
+DSR(SR, Tt, M, g3, g4, SR_m, SR_v)
+# The sought value!
+0.6657
+The value 0.6657 is not high enough (it does not reach the 90% or 95% threshold) to make
+the strategy signiﬁcantly superior to the other ones that were considered in the batch of
+tests.
+
+--- PDF PAGE 226 ---
+12.8 Coding exercises 207
+12.8 Coding exercises
+1. Code the returns of the EW portfolio with functions only (no loop).
+2. Code the advanced weighting function deﬁned in Equation ( 12.3).
+3. Test it in a small backtest and check its sensitivity to the parameters.
+
+--- PDF PAGE 227 ---
+Taylor & Francis 
+Taylor & Francis Group 
+http://taylorandfrancis.com 

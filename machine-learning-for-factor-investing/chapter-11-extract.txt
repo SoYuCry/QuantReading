@@ -1,0 +1,658 @@
+
+
+--- PDF PAGE 192 ---
+11
+Ensemble models
+Let us be honest. When facing a prediction task, it is not obvious to determine the best
+choice between ML tools: penalized regressions, tree methods, neural networks, SVMs, etc.
+A natural and tempting alternative is to combine several algorithms (or the predictions
+that result from them) to try to extract value out of each engine (or learner). This intention
+is not new and contributions towards this goal go back at least to Bates and Granger (1969)
+(for the purpose of passenger ﬂow forecasting).
+Below, we outline a few books on the topic of ensembles. The latter have many names and
+synonyms, such as forecast aggregation, model averaging, mixture of experts or
+prediction combination. The ﬁrst four references below are monographs, while the last
+two are compilations of contributions:
+• Zhou (2012): a very didactic book that covers the main ideas of ensembles;
+• Schapire and Freund (2012): the main reference for boosting (and hence, ensembling)
+with many theoretical results and thus strong mathematical groundings;
+• Seni and Elder (2010): an introduction dedicated to tree methods mainly;
+• Claeskens and Hjort (2008): an overview of model selection techniques with a few
+chapters focused on model averaging;
+• Zhang and Ma (2012): a collection of thematic chapters on ensemble learning;
+• Okun et al. (2011): examples of applications of ensembles.
+In this chapter, we cover the basic ideas and concepts behind the notion of ensembles. We
+refer to the above books for deeper treatments on the topic. We underline that several
+ensemble methods have already been mentioned and covered earlier, notably in Chapter
+6. Indeed, random forests and boosted trees are examples of ensembles. Hence, other early
+articles on the combination of learners are Schapire (1990), Jacobs et al. (1991) (for neural
+networks particularly), and Freund and Schapire (1997). Finally, for a theoretical view on
+ensembles with a Bayesian perspective, we refer to Levy and Razin (2021).
+11.1 Linear ensembles
+11.1.1 Principles
+In this chapter we adopt the following notations. We work with M models where ˜yi,m is the
+prediction of model m for instance i and errors ϵi,m =yi − ˜yi,m are stacked into a (I ×M)
+173
+
+--- PDF PAGE 193 ---
+174 11 Ensemble models
+matrix E. A linear combination of models has sample errors equal to Ew, where w =wm
+are the weights assigned to each model and we assume w′1M = 1 . Minimizing the total
+(squared) error is thus a simple quadratic program with unique constraint. The Lagrange
+function is w′1M = 1 and hence
+∂
+∂wL(w) = E′Ew −λ1M = 0 ⇔ w =λ(E′E)−11M,
+and the constraint imposes w∗ = (E′E)−11M
+(1′
+M E′E)−11M
+. This form is similar to that of minimum
+variance portfolios. If errors are unbiased 1′
+I E = 0′
+M , then E′E is the covariance matrix of
+errors.
+This expression shows an important feature of optimized linear ensembles: they can only
+add value if the models tell diﬀerent stories. If two models are redundant, E′E will be
+close to singular and w∗ will arbitrage one against the other in a spurious fashion. This
+is the exact same problem as when mean-variance portfolios are constituted with highly
+correlated assets: in this case, diversiﬁcation fails because when things go wrong, all assets
+go down. Another problem arises when the number of observations is too small compared
+to the number of assets so that the covariance matrix of returns is singular. This is not an
+issue for ensembles because the number of observations will usually be much larger than
+the number of models ( I >>M).
+In the limit when correlations increase to one, the above formulation becomes highly un-
+stable and ensembles cannot be trusted. One heuristic way to see this is when M = 2
+and
+E′E =
+[ σ2
+1 ρσ1σ2
+ρσ1σ2 σ2
+2
+]
+⇔ (E′E)−1 = 1
+1−ρ2
+[ σ−2
+1 −ρ(σ1σ2)−1
+−ρ(σ1σ2)−1 σ−2
+2
+]
+so that when ρ → 1, the model with the smallest errors (minimum σ2
+i ) will see its weight
+increasing towards inﬁnity, while the other model will have a similarly large negative
+weight: the model arbitrages between two highly correlated variables. This seems like a
+very bad idea.
+There is another illustration of the issues caused by correlations. Let’s assume we face M
+correlated errors ϵm with pairwise correlation ρ , zero mean and variance σ2. The variance
+of errors is
+E
+[
+1
+M
+M∑
+m=1
+ϵ2
+m
+]
+= 1
+M2
+
+
+M∑
+m=1
+ϵ2
+m +
+∑
+m̸=n
+ϵnϵm
+
+
+= σ2
+M + 1
+M2
+∑
+n̸=m
+ρσ2
+=ρσ2 + σ2(1 −ρ)
+M
+where while the second term converges to zero as M increases, the ﬁrst term remains and is
+linearly increasing with ρ . In passing, because variances are always positive, this result
+implies that the common pairwise correlation between M variables is bounded below by
+−(M − 1)−1. This result is interesting but rarely found in textbooks.
+
+--- PDF PAGE 194 ---
+11.1 Linear ensembles 175
+One improvement proposed to circumvent the trouble caused by correlations, advocated in
+a seminal publication ( Breiman (1996)), is to enforce positivity constraints on the weights
+and solve
+argmin
+w
+w′E′Ew, s.t.
+{ w′1M = 1
+wm ≥ 0 ∀m .
+Mechanically, if several models are highly correlated, the constraint will impose that only
+one of them will have a non-zero weight. If there are many models, then just a few of them
+will be selected by the minimization program. In the context of portfolio optimization,
+Jagannathan and Ma (2003) have shown the beneﬁts of constraint in the construction
+mean-variance allocations. In our setting, the constraint will similarly help discriminate
+wisely among the ‘best’ models.
+In the literature, forecast combination and model averaging (which are synonyms of ensem-
+bles) have been tested on stock markets as early as in Von Holstein (1972). Surprisingly,
+the articles were not published in Finance journals but rather in ﬁelds such as Management
+(Virtanen and Yli-Olli (1987), Wang et al. (2012)), Economics and Econometrics ( Donald-
+son and Kamstra (1996), Clark and McCracken (2009) and Mascio et al. (2021)), Operations
+Reasearch (Huang et al. (2005), Leung et al. (2001), and Bonaccolto and Paterlini (2019)),
+and Computer Science ( Harrald and Kamstra (1997) and Hassan et al. (2007)).
+In the general forecasting literature, many alternative (reﬁned) methods for combining fore-
+casts have been studied. Trimmed opinion pools ( Grushka-Cockayne et al. (2016)) compute
+averages over the predictions that are not too extreme. We refer to Gaba et al. (2017) for
+a more exhaustive list of combinations as well as for an empirical study of their respective
+eﬃciency. Overall, ﬁndings are mixed and the heuristic simple average is, as usual, hard to
+beat (see, e.g., Genre et al. (2013)).
+11.1.2 Example
+In order to build an ensemble, we must gather the predictions and the corresponding errors
+into the E matrix. We will work with ﬁve models that were trained in the previous chapters:
+penalized regression, simple tree, random forest, xgboost, and feed-forward neural network.
+The training errors have zero means, hence E′E is the covariance matrix of errors between
+models.
+err_pen_train = fit_pen_pred.predict(
+X_penalized_train)-training_sample['R1M_Usd'] # Reg.
+err_tree_train = fit_tree.predict(
+training_sample[features])-training_sample['R1M_Usd'] # Tree
+err_RF_train = fit_RF.predict(
+training_sample[features])-training_sample['R1M_Usd'] # RF
+err_XGB_train = fit_xgb.predict(
+train_matrix_xgb)-training_sample['R1M_Usd'] # XGBoost
+err_NN_train = model_NN.predict(
+training_sample[features_short])-training_sample['R1M_Usd'].
+values.reshape((-1,1)) # NN
+E= pd.concat(
+[err_pen_train,err_tree_train,err_RF_train,err_XGB_train,pd.
+↪→DataFrame(
+
+--- PDF PAGE 195 ---
+176 11 Ensemble models
+err_NN_train)],axis=1) # E matrix
+E.set_axis(['Pen_reg','Tree','RF','XGB','NN'], axis =1,/uni2423
+↪→inplace=True)#Names
+E.corr() # Cor. mat.
+Pen_reg Tree RF XGB NN
+Pen_reg 1.000000 0.998439 0.989132 0.982260 0.998416
+Tree 0.998439 1.000000 0.990692 0.984177 0.998498
+RF 0.989132 0.990692 1.000000 0.978393 0.990739
+XGB 0.982260 0.984177 0.978393 1.000000 0.984303
+NN 0.998416 0.998498 0.990739 0.984303 1.000000
+E.corr().mean()
+Pen_reg 0.993649
+Tree 0.994361
+RF 0.989791
+XGB 0.985826
+NN 0.994391
+dtype: float64
+As is shown by the correlation matrix, the models fail to generate heterogeneity in their
+predictions. The minimum correlation (though above 95%!) is obtained by the boosted
+tree models. Below, we compare the training accuracy of models by computing the average
+absolute value of errors.
+abs(E).mean() # Mean absolute error or columns of E
+Pen_reg 0.083459
+Tree 0.083621
+RF 0.074806
+XGB 0.084048
+NN 0.083627
+dtype: float64
+The best performing ML engine is the random forest. The boosted tree model is the worst,
+by far. Below, we compute the optimal (non-constrained) weights for the combination of
+models.
+w_ensemble=np.linalg.inv((E.T.values@E.values))@np.ones(5)
+# Optimal weights
+w_ensemble /= np.sum(w_ensemble)
+w_ensemble
+array([ 1.02220538, -2.22814584, 3.93749133, 0.56469433, -2.29624521])
+Because of the high correlations, the optimal weights are not balanced and diversiﬁed: they
+load heavily on the random forest learner (best in sample model) and ‘short’ a few models
+in order to compensate. As one could expect, the model with the largest negative weights
+(Pen_reg) has a very high correlation with the random forest algorithm (0.997).
+
+--- PDF PAGE 196 ---
+11.1 Linear ensembles 177
+Note that the weights are of course computed with training errors . The optimal combina-
+tion is then tested on the testing sample. Below, we compute out-of-sample (testing) errors
+and their average absolute value.
+err_pen_test=fit_pen_pred.predict(
+X_penalized_test)-testing_sample['R1M_Usd'] # Reg.
+err_tree_test = fit_tree.predict(
+testing_sample[features])-testing_sample['R1M_Usd'] # Tree
+err_RF_test = fit_RF.predict(
+testing_sample[features])-testing_sample['R1M_Usd'] # RF
+err_XGB_test = fit_xgb.predict(
+test_matrix_xgb)-testing_sample['R1M_Usd'] # XGBoost
+err_NN_test = model_NN.predict(
+testing_sample[features_short])-testing_sample['R1M_Usd'].values.
+↪→reshape(
+(-1,1)) # NN
+E_test= pd.concat(
+[err_pen_test,err_tree_test,err_RF_test,err_XGB_test,
+pd.DataFrame(err_NN_test,index=testing_sample.index)],axis=1)
+# E_test matrix
+E_test.set_axis(['Pen_reg','Tree','RF','XGB','NN'],axis=1,inplace=True)
+# Names
+abs(E_test).mean() # Mean absolute error or columns of E_test
+Pen_reg 0.066182
+Tree 0.066535
+RF 0.067986
+XGB 0.068569
+NN 0.066613
+dtype: float64
+The boosted tree model is still the worst performing algorithm, while the simple models
+(regression and simple tree) are the ones that fare the best. The most naïve combination is
+the simple average of model and predictions.
+err_EW_test = np.mean(np.abs(E_test.mean(axis=1)))
+# equally weight combination
+print(f'equally weight combination: {err_EW_test}')
+equally weight combination: 0.06673125663086175
+Because the errors are very correlated, the equally weighted combination of forecasts yields
+an average error which lies ‘in the middle’ of individual errors. The diversiﬁcation beneﬁts
+are too small. Let us now test the ‘optimal’ combination w∗ = (E′ E)−1 1M
+(1′
+M E′ E)−1 1M
+err_opt_test =np.mean(np.abs(E_test.values@w_ensemble))
+# Optimal unconstrained combination
+print(f'Optimal unconstrained combination: {err_opt_test}')
+Optimal unconstrained combination: 0.08351002385399925
+
+--- PDF PAGE 197 ---
+178 11 Ensemble models
+Again, the result is disappointing because of the lack of diversiﬁcation across models. The
+correlations between errors are high not only on the training sample, but also on the testing
+sample, as shown below.
+E_test.corr() # Cor. mat.
+Pen_reg Tree RF XGB NN
+Pen_reg 1.000000 0.998707 0.991539 0.966304 0.998564
+Tree 0.998707 1.000000 0.993818 0.968991 0.998854
+RF 0.991539 0.993818 1.000000 0.972710 0.993923
+XGB 0.966304 0.968991 0.972710 1.000000 0.969315
+NN 0.998564 0.998854 0.993923 0.969315 1.000000
+The leverage from the optimal solution only exacerbates the problem and underperforms
+the heuristic uniform combination. We end this section with the constrained formulation of
+Breiman (1996) for the quadratic optimisation. If we write Σ for the covariance matrix of
+errors, we seek
+w∗ = argmin
+w
+w′Σw, 1′w =1 ,w i ≥ 0,
+The constraints will be handled as:
+Aw =
+
+
+111
+100
+010
+001
+
+ w compared to b =
+
+
+1
+0
+0
+0
+
+ ,
+where the ﬁrst line will be an equality (weights sum to one), and the last three will be
+inequalities (weights are all positive).
+from cvxopt import matrix, solvers # Library for quadratic progr.
+sigma = E.T.values@E.values # Unscaled covariance matrix
+nb_mods=5 # Number of models
+Q = 2* matrix(sigma, tc ="d")
+# Symmetric quadratic-cost matrix
+p = matrix(np.zeros(nb_mods),tc="d")
+# Quadratic-cost vector
+G = matrix(-np.eye(nb_mods), tc ="d")
+# Linear inequality constraint matrix
+h = matrix(np.zeros(nb_mods), tc ="d")
+# Linear inequality constraint vector
+A = matrix(np.ones(nb_mods), ( 1, nb_mods))
+# matrix for linear equality constraint
+b = matrix(1.0)
+# vector for linear equality constraint
+w_const=solvers.qp(Q, p, G, h, A, b)
+# Solution
+print(w_const['x']) # Solution
+
+--- PDF PAGE 198 ---
+11.2 Stacked ensembles 179
+pcost dcost gap pres dres
+0: 3.3445e+03 3.3656e+03 5e+01 7e+00 1e+01
+1: 3.3575e+03 3.4486e+03 2e+01 4e+00 6e+00
+2: 3.4155e+03 3.5580e+03 2e+01 2e+00 4e+00
+3: 3.5873e+03 4.1600e+03 3e+02 2e+00 3e+00
+4: 3.9350e+03 4.4186e+03 2e+02 1e+00 2e+00
+5: 5.2828e+03 4.1593e+03 2e+03 8e-01 1e+00
+6: 4.9769e+03 4.6678e+03 3e+02 3e-16 2e-11
+7: 4.7556e+03 4.7111e+03 4e+01 1e-16 3e-12
+8: 4.7238e+03 4.7233e+03 6e-01 1e-16 5e-12
+9: 4.7234e+03 4.7234e+03 6e-03 2e-16 4e-12
+10: 4.7234e+03 4.7234e+03 6e-05 4e-16 4e-12
+Optimal solution found.
+[ 5.66e-09]
+[ 5.68e-09]
+[ 1.00e+00]
+[ 6.34e-08]
+[ 5.70e-09]
+Compared to the unconstrained solution, the weights are sparse and concentrated in one
+model, usually the one with small training sample errors.
+11.2 Stacked ensembles
+11.2.1 T wo-stage training
+Stacked ensembles are a natural generalization of linear ensembles. The idea of generaliz-
+ing linear ensembles goes back at least to Wolpert (1992b). In the general case, the training
+is performed in two stages. The ﬁrst stage is the simple one, whereby the M models are
+trained independently, yielding the predictions ˜yi,m for instance i and model m. The second
+step is to consider the output of the trained models as input for a new level of machine
+learning optimization. The second level predictions are ˘yi =h(˜yi,1,..., ˜yi,M), where h is a
+new learner (see Figure 11.1 ). Linear ensembles are of course stacked ensembles in which
+the second layer is a linear regression.
+The same techniques are then applied to minimize the error between the true values yi and
+the predicted ones ˘yi.
+11.2.2 Code and results
+Below, we create a low-dimensional neural network which takes in the individual predictions
+of each model and compiles them into a synthetic forecast.
+model_stack = keras.Sequential()
+# This defines the structure of the network, i.e. how layers are /uni2423
+↪→organized
+model_stack.add(layers.Dense(8, activation="relu",/uni2423
+↪→input_shape=(nb_mods,)))
+
+--- PDF PAGE 199 ---
+180 11 Ensemble models
+Model 1
+Model 2
+...
+Model M
+I*M = nb
+predictions
+(I = nb instances)
+Stage 1:
+first learning level
+simple training
+and predictions y
+Stage 2:
+2nd learning level
+optimise combination
+or feed new learner
+Stage 3:
+Forecast!
+reverse operation:
+two step prediction
+y = h(y , y ,...,y )
+estimate this model:
+1 2 M
+h is the aggregate
+meta model
+1. Make the forecasts
+at indiv. learner
+level
+2. Feed the forecasts
+to the second
+model h
+~ ~ ~
+~
+m
+FIGURE 11.1: Scheme of stacked ensembles.
+model_stack.add(layers.Dense(4, activation ="tanh"))
+model_stack.add(layers.Dense(1))
+The conﬁguration is very simple. We do not include any optional arguments and hence the
+model is likely to overﬁt. As we seek to predict returns, the loss function is the standard L2
+norm.
+model_stack.compile(optimizer='RMSprop',
+# Optimisation method (weight updating)
+loss='mse',# Loss function
+metrics=['MeanAbsoluteError']) # Output metric
+model_stack.summary() # Model architecture
+Model: "sequential_1"
+_________________________________ Layer (type) Output/uni2423
+↪→Shape Param #
+=================================================================
+dense_3 (Dense) (None, 8) 48
+dense_4 (Dense) (None, 4) 36
+dense_5 (Dense) (None, 1) 5
+=================================================================
+Total params: 89
+Trainable params: 89
+Non-trainable params: 0
+
+--- PDF PAGE 200 ---
+11.3 Extensions 181
+y_tilde=E.values+np.tile(
+training_sample['R1M_Usd'].values.reshape(-1, 1), nb_mods)# Train /uni2423
+↪→preds
+y_test=E_test.values+np.tile(
+testing_sample['R1M_Usd'].values.reshape(-1, 1),nb_mods) # Testing
+fit_NN_stack = model_stack.fit(y_tilde,# Train features
+NN_train_labels,# Train labels
+batch_size=512,# Train parameters
+epochs=12,# Train parameters
+verbose=1,# Show messages
+validation_data=(y_test,NN_test_labels))
+# Test features & labels
+show_history(fit_NN_stack )
+# Show training plot
+FIGURE 11.2: Training metrics for the ensemble model.
+The performance of the ensemble is again disappointing: the learning curve is ﬂat in Figure
+11.2, hence the rounds of back-propagation are useless. The training adds little value which
+means that the new overarching layer of ML does not enhance the original predictions.
+Again, this is because all ML engines seem to be capturing the same patterns, and both
+their linear and non-linear combinations fail to improve their performance.
+11.3 Extensions
+11.3.1 Exogenous variables
+In a ﬁnancial context, macro-economic indicators could add value to the process. It is pos-
+sible that some models perform better under certain conditions, and exogenous predictors
+can help introduce a ﬂavor of economic-driven conditionality in the predictions.
+
+--- PDF PAGE 201 ---
+182 11 Ensemble models
+Adding macro-variables to the set of predictors (here, predictions) ˜y i,m could seem like one
+way to achieve this. However, this would amount to mixing predicted values with (possibly
+scaled) economic indicators, and that would not make much sense.
+One alternative outside the perimeter of ensembles is to train simple trees on a set of
+macro-economic indicators. If the labels are the (possibly absolute) errors stemming from
+the original predictions, then the trees will create clusters of homogeneous error values. This
+will hint towards which conditions lead to the best and worst forecasts. We test this idea
+below, using aggregate data from the Federal Reserve of Saint Louis. We download and
+format the data in the next chunk.
+macro_cond = pd.read_csv("macro_cond.csv")
+# Term Spred, Inflation and Consumer Price Index
+macro_cond["Index"]=pd.to_datetime(macro_cond["date"])+pd.offsets.
+↪→MonthBegin(-1)
+# Change date to first day of month to join/merge
+ens_data=pd.DataFrame()
+ens_data['date']=testing_sample["date"].values
+ens_data['err_NN_test']=err_NN_test
+# Using the errors from previous section
+ens_data["Index"]=pd.to_datetime(ens_data["date"])+pd.offsets.
+↪→MonthBegin(-1)
+# Change date to first day of month to join/merge
+ens_data = pd.merge(
+ens_data,macro_cond,how="left",left_on="Index",right_on="Index")
+ens_data.head() # Show first lines
+date_x err_NN_test Index date_y CPIAUCSL inflation termspread
+2014-01-31 0.0844 2014-01-01 31/01/2014 235.28 0.00242 2.47
+2014-01-31 0.0738 2014-01-01 31/01/2014 235.28 0.00242 2.47
+2014-01-31 -0.2549 2014-01-01 31/01/2014 235.28 0.00242 2.47
+2014-01-31 0.2664 2014-01-01 31/01/2014 235.28 0.00242 2.47
+2014-01-31 -0.0794 2014-01-01 31/01/2014 235.28 0.00242 2.47
+We can now build a tree that tries to explain the accuracy of models as a function of
+macro-variables.
+X_ens = ens_data[['inflation','termspread']] # Training macro features
+y_ens = abs(ens_data['err_NN_test']) # Label, error from previous section
+fit_ens = tree.DecisionTreeRegressor( # Defining the model
+max_depth =2 , # Maximum depth (i.e. tree levels)
+ccp_alpha=0.00001 # complexity parameters
+)
+fit_ens.fit(X_ens, y_ens) # Fitting the model
+fig, ax = plt.subplots(figsize=(13, 8)) # resizing
+tree.plot_tree(fit_ens ,feature_names =X_ens.columns.values, ax =ax)
+# Plot the tree
+plt.show()
+
+--- PDF PAGE 202 ---
+11.3 Extensions 183
+FIGURE 11.3: Conditional performance of a ML engine.
+The tree creates clusters which have homogeneous values of absolute errors. One big cluster
+gathers 92% of predictions (the left one) and is the one with the smallest average. It corre-
+sponds to the periods when the term spread is above 0.29 (in percentage points). The other
+two groups (when the term spread is below 0.29%) are determined according to the level
+of inﬂation. If the latter is positive, then the average absolute error is 7%, if not, it is 12%.
+This last number, the highest of the three clusters, indicates that when the term spread is
+low and the inﬂation negative, the model’s predictions are not trustworthy because their er-
+rors have a magnitude twice as large as in other periods. Under these circumstances (which
+seem to be linked to a dire economic environment), it may be wiser not to use ML-based
+forecasts.
+11.3.2 Shrinking inter-model correlations
+As shown earlier in this chapter, one major problem with ensembles arises when the ﬁrst
+layer of predictions is highly correlated. In this case, ensembles are pretty much useless.
+There are several tricks that can help reduce this correlation, but the simplest and best
+is probably to alter training samples. If algorithms do not see the same data, they will
+probably infer diﬀerent patterns.
+There are several ways to split the training data so as to build diﬀerent subsets of training
+samples. The ﬁrst dichotomy is between random versus deterministic splits. Random splits
+are easy and require only the target sample size to be ﬁxed. Note that the training samples
+can be overlapping as long as the overlap is not too large. Hence, if the original training
+sample has I instance and the ensemble requires M models, then a subsample size of ⌊I/M ⌋
+may be too conservative especially if the training sample is not very large. In this case
+⌊I/
+√
+M ⌋ may be a better alternative. Random forests are one example of ensembles built
+in random training samples.
+One advantage of deterministic splits is that they are easy to reproduce and their outcome
+does not depend on the random seed. By the nature of factor-based training samples, the
+second splitting dichotomy is between time and assets. A split within assets is straightfor-
+ward: each model is trained on a diﬀerent set of stocks. Note that the choices of sets can
+be random, or dictacted by some factor-based criterion: size, momentum, book-to-market
+ratio, etc.
+
+--- PDF PAGE 203 ---
+184 11 Ensemble models
+A split in dates requires other decisions: is the data split in large blocks (like years) and
+each model gets a block, which may stand for one particular kind of market condition? Or,
+are the training dates divided more regularly? For instance, if there are 12 models in the
+ensemble, each model can be trained on data from a given month (e.g., January for the ﬁrst
+models, February for the second, etc.).
+Below, we train four models on four diﬀerent years to see if this helps reduce the inter-model
+correlations. This process is a bit lengthy because the samples and models need to be all
+redeﬁned. We start by creating the four training samples. The third model works on the
+small subset of features, hence the sample is smaller.
+training_sample_2007 = training_sample.loc[training_sample.index[(
+training_sample['date']>'2006-12-31')&(
+training_sample['date']<'2008-01-01')].tolist()]
+training_sample_2009=training_sample.loc[training_sample.index[(
+training_sample['date']>'2008-12-31')&(
+training_sample['date']<'2010-01-01')].tolist()]
+training_sample_2011 = training_sample.loc[training_sample.index[(
+training_sample['date']>'2010-12-31')&(
+training_sample['date']<'2012-01-01')].tolist()]
+training_sample_2013 = training_sample.loc[training_sample.index[(
+training_sample['date']>'2012-12-31')&(
+training_sample['date']<'2014-01-01')].tolist()]
+Then, we proceed to the training of the models. The syntaxes are those used in the previous
+chapters, nothing new here. We start with a penalized regression. In all predictions below,
+the original testing sample is used for all models .
+y_ens_2007 = training_sample_2007['R1M_Usd'].values # Dep. var.
+x_ens_2007 = training_sample_2007[features].values # Predictors
+model_2007 = ElasticNet(alpha=0.1, l1_ratio =0.1) # Model
+fit_ens_2007=model_2007.fit(x_ens_2007,y_ens_2007) # fitting the model
+err_ens_2007=fit_ens_2007.
+↪→predict(X_penalized_test)-testing_sample['R1M_Usd']
+# Pred. errs
+We continue with a random forest.
+fit_ens_2009 = RandomForestRegressor(n_estimators = 40 , # Nb of random /uni2423
+↪→trees
+criterion ='mse', # function to measure the quality of a split
+min_samples_split= 250 , # Minimum size of terminal cluster
+bootstrap=False, # replacement
+max_features=30, # Nb of predictive variables for each tree
+max_samples=4000 # Size of (random) sample for each tree
+)
+fit_ens_2009.fit(
+training_sample_2009[features].values,
+training_sample_2009['R1M_Usd'].values )
+# Fitting the model
+err_ens_2009=fit_ens_2009.predict(
+
+--- PDF PAGE 204 ---
+11.3 Extensions 185
+pd.DataFrame(X_test))-testing_sample['R1M_Usd']
+# Pred. errs
+The third model is a boosted tree.
+train_features_xgb_2011=training_sample_2011[features_short].values
+# Independent variables
+train_label_xgb_2011=training_sample_2011['R1M_Usd'].values
+# Dependent variable
+train_matrix_xgb_2011=xgb.DMatrix(
+train_features_xgb_2011, label =train_label_xgb_2011)
+# XGB format!
+params={'eta' : 0.3, # Learning rate
+'objective' : "reg:squarederror", # Objective function
+'max_depth' : 4, # Maximum depth of trees
+'subsample' : 0.6, # Train on random 60% of sample
+'colsample_bytree' : 0.7, # Train on random 70% of /uni2423
+↪→predictors
+'lambda' : 1, # Penalisation of leaf values
+'gamma' : 0.1} # Penalisation of number of /uni2423
+↪→leaves
+fit_ens_2011 =xgb.train(params, train_matrix_xgb_2011, /uni2423
+↪→num_boost_round=18)
+# Number of trees used
+err_ens_2011=fit_ens_2011.
+↪→predict(test_matrix_xgb)-testing_sample['R1M_Usd']
+# Pred. errs
+Finally, the last model is a simple neural network.
+model = keras.Sequential()
+model.add(layers.
+↪→Dense(16,activation="relu",input_shape=(len(features),)))
+model.add(layers.Dense(8, activation ="tanh"))
+model.add(layers.Dense(1))
+model.compile(optimizer='RMSprop',
+loss='mse',
+metrics=['MeanAbsoluteError'])
+model.summary()
+fit_ens_2013 = model.fit(
+training_sample_2013[features].values,# Training features
+training_sample_2013['R1M_Usd'].values,# Training labels
+batch_size=128, # Training parameters
+epochs = 9 , # Training parameters
+verbose = True # Show messages
+)
+err_ens_2013=model.predict(
+X_penalized_test)-testing_sample['R1M_Usd'].values.reshape((-1,1))
+# Pred. errs
+
+--- PDF PAGE 205 ---
+186 11 Ensemble models
+Endowed with the errors of the four models, we can compute their correlation matrix.
+E_subtraining = pd.concat(
+[err_ens_2007,err_ens_2009,err_ens_2011,pd.DataFrame(
+err_ens_2013,index=testing_sample.index)], axis =1)
+# E_subtraining matrix
+E_subtraining.set_axis(
+['err_ens_2007','err_ens_2009','err_ens_2011','err_ens_2013'],
+axis=1, inplace =True)# Names
+E_subtraining.corr()
+err_ens_2007 err_ens_2009 err_ens_2011 err_ens_2013
+err_ens_2007 1.000000 0.953756 0.868026 0.998962
+err_ens_2009 0.953756 1.000000 0.842201 0.955961
+err_ens_2011 0.868026 0.842201 1.000000 0.868046
+err_ens_2013 0.998962 0.955961 0.868046 1.000000
+E_subtraining.corr().mean()
+err_ens_2007 0.955186
+err_ens_2009 0.937980
+err_ens_2011 0.894568
+err_ens_2013 0.955742
+dtype: float64
+The results are overall disappointing. Only one model manages to extract patterns that are
+somewhat diﬀerent from the other ones, resulting in a 89% correlation across the board.
+Neural networks (on 2013 data) and penalized regressions (2007) remain highly correlated.
+One possible explanation could be that the models capture mainly noise and little signal.
+Working with long-term labels like annual returns could help improve diversiﬁcation across
+models.
+11.4 Exercise
+Build an integrated ensemble on top of three neural networks trained entirely with Keras.
+Each network obtains one-third of predictors as input. The three networks yield a classiﬁ-
+cation (yes/no or buy/sell). The overarching network aggregates the three outputs into a
+ﬁnal decision. Evaluate its performance on the testing sample. Use the functional API.
