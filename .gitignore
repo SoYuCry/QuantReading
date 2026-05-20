@@ -1,3 +1,6 @@
 ﻿.omx/
 __pycache__/
 *.pyc
+
+# Keep source papers/books local; track notes and reading plans instead.
+*.pdf
