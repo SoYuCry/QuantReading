@@ -1,0 +1,244 @@
+
+
+--- PAGE 1 ---
+Unravelling the Probabilistic Forest:
+Arbitrage in Prediction Markets
+Oriol Saguillo /envel⌢pe
+IMDEA Networks, Madrid, Spain
+Vahid Ghafouri /envel⌢pe
+Oxford Internet Institute, UK
+Lucianna Kiffer /envel⌢pe
+IMDEA Networks, Madrid, Spain
+Guillermo Suarez-Tangil /envel⌢pe
+IMDEA Networks, Madrid, Spain
+Abstract
+Polymarket is a prediction market platform where users can speculate on future events by trading
+shares tied to specific outcomes, known asconditions. Each market on Polymarket is associated
+with a set of one or more such conditions. To ensure proper market resolution, the condition set
+must beexhaustive – collectively accounting for all possible outcomes – andmutually exclusive –
+only one condition may resolve as true. Thus, the collective prices (probabilities) of all related
+outcomes (whether in a condition or market) should be $1, representing a combined probability
+of 1 of any outcome. Despite this design, Polymarket exhibits cases where dependent assets are
+mispriced, allowing for purchasing (or selling) a certain outcome for less than (or more than) $1,
+guaranteeing profit. This phenomenon, known as arbitrage, could enable sophisticated participants
+to exploit such inconsistencies.
+In this paper, we conduct an empirical arbitrage analysis on Polymarket data to answer three
+key questions: (Q1) What conditions give rise to arbitrage? (Q2) Does arbitrage actually occur on
+Polymarket?, and (Q3) Has anyone exploited these opportunities? A major challenge in analyzing
+arbitrage between related markets lies in the scalability of comparisons across a large number of
+markets and conditions, with a naive analysis requiringO(2n+m) comparisons. To overcome this, we
+employ a heuristic-driven reduction strategy based on timeliness, topical similarity, and combinatorial
+relationships, further validated by expert input.
+Our study reveals two distinct forms of arbitrage on Polymarket:Market Rebalancing Arbitrage,
+which occurs within a single market or condition (intra-market), andCombinatorial Arbitrage, which
+spans across multiple markets (inter-market). We use on-chain historical order book data to analyze
+when these types of arbitrage opportunities have existed, and when they have been executed by users.
+We find a realized estimate of 40 million USD of profit extracted across both types of arbitrage
+during our measurement period.
+2012 ACM Subject ClassificationSecurity and privacy→Economics of security and privacy
+Keywords and phrasesPrediction Markets, Maximal Extractable Value, Large Language Models
+Digital Object Identifier10.4230/LIPIcs.AFT.2025.27
+Related Version Full Version: https://arxiv.org/abs/2508.03474 [32]
+Funding This work was supported by a Flashbots Research Proposal FRP-51.
+Acknowledgements Additionally, we thank the anonymous AFT reviewers for the helpful feedback.
+1 Introduction
+Forecasting future events has long been a central problem in economics and finance, where
+accurate predictions can have significant informational and monetary value. Traditional
+approaches have often relied on expert judgment or econometric models, each with their own
+limitations in adaptability and responsiveness to new information [33, 5].
+© Oriol Saguillo, Vahid Ghafouri, Lucianna Kiffer, and Guillermo Suarez-Tangil;
+licensed under Creative Commons License CC-BY 4.0
+7th Conference on Advances in Financial Technologies (AFT 2025).
+Editors: Zeta Avarikioti and Nicolas Christin; Article No.27; pp.27:1–27:24
+Leibniz International Proceedings in Informatics
+Schloss Dagstuhl – Leibniz-Zentrum für Informatik, Dagstuhl Publishing, Germany
+
+--- PAGE 2 ---
+27:2 Unravelling the Probabilistic Forest: Arbitrage in Prediction Markets
+Prediction markets [39] offer a novel approach to generating forecasts. The general idea
+is to pose a question openly to the public along with its possible outcomes. Participants
+place bets when they believe that the probability assigned to an outcome is inaccurate and
+may earn money over time if their predictions are correct. An example of such a market
+was introduced by Tradesports.com [13], which listed a security that would pay $100 if the
+head of DARPA was ousted by the end of August 2003. The novelty of this approach lies in
+the speed with which the probabilities were updated as new information about the event
+became available. The future can also be viewed as an incomplete information game, where
+each individual holds a private valuation of an outcome based on their personal perception
+of reality. By aggregating these valuations across participants, the system can generate a
+more accurate probability of an event occurring. Recent prediction markets for the 2024 U.S.
+election have demonstrated greater accuracy in forecasting outcomes compared to traditional
+media forecasting tools [9].
+Polymarket [27], a prediction market protocol on the Polygon blockchain [17], has emerged
+as the leading partially-decentralized protocol for making prediction markets a reality, largely
+due to its high levels of user engagement during the US elections. For instance, during
+the 2024 elections, Polymarket saw explosive growth, with over $3.7 billion in total trading
+volume and tens of thousands of active users placing bets on election outcomes [23]. (See
+Figure 3 for an overview of data on liquidity locked in the markets over time.) At its peak,
+markets on Polymarket were resolving millions of dollars in open interest, with major news
+outlets and online communities citing market odds as real-time indicators of public sentiment.
+This surge in activity is positioning Polymarket as one of the most popular forecasting
+ecosystems, bridging retail speculation with informational efficiency.
+Arbitrage opportunities arise when two identical assets are valued differently due to a
+pricing mismatch between sellers. Arbitrageurs are sophisticated individuals or agents who
+exploit these discrepancies by purchasing the asset at the lower price and selling it to a buyer
+willing to pay a higher price. In traditional finance, arbitrage is a well-studied mechanism
+for enforcing price consistency and improving market efficiency. In prediction markets like
+Polymarket, arbitrage plays a similar role, acting as a corrective force that aligns asset
+prices with their underlying probabilistic truth values. Unlike centralized markets, however,
+arbitrage on-chain introduces unique complexities: it requires cross-market, fast execution,
+and the ability to parse fragmented and often noisy information across multiple interrelated
+conditions. This makes the identification and exploitation of arbitrage on platforms like
+Polymarket a sophisticated technical challenge, especially at scale.
+1.1 Our Contributions
+To understand how arbitrageurs may be taking advantage of pricing mismatches, we set out
+to answer the following research questions:
+Q1. What conditions give rise to arbitrage?
+Q2. Does arbitrage actually occur on Polymarket?
+Q3. Has anyone exploited these opportunities?
+To answer these questions, we precisely characterize the types of arbitrage that arise in
+outcome-dependent condition spaces. We then design a methodology that combines heuristic-
+driven reduction with semantic analysis to efficiently identify arbitrage opportunities across
+Polymarket. Our approach leverages temporal proximity, categorization into primary topics
+using textual embeddings (generated byLinq-Embed-Mistral), and large language models
+(LLMs) to extract combinatorial relationships and logical dependencies from market condition
+descriptions. This enables us to reduce the arbitrage search space and systematically triage
+market arbitrage. To perform our analysis, we collect historical bid data from Polymarket.
+
+--- PAGE 3 ---
+O. Saguillo, V. Ghafouri, L. Kiffer, and G. Suarez-Tangil 27:3
+We use this bid data to characterize arbitrage opportunities within conditions in a single
+market, and across dependent markets. Our data collection efforts span markets that were
+resolved over the period of one year, from April 1, 2024, to April 1, 2025.
+1.2 Related Work
+This work presents the first large-scale analysis of arbitrage on Polymarket, one of the most
+widely-used prediction markets. A central contribution of our study is the investigation of
+combinatorial relationships between conditions to infer and characterize dependencies that
+may give rise to arbitrage opportunities. To contextualize our approach, we survey prior
+research on Maximal Extractable Value (MEV) detection and highlight recent advances in
+leveraging LLMs to analyze and interpret complex cognitive and decision-making processes.
+1.2.1 MEV Detection
+Maximal Extractable Value (MEV) [6] refers to the game-theoretic problem of transaction
+manipulation within a block, including inserting, reordering, or censoring transactions. MEV
+has become a regular feature of decentralized systems, where it is used to extract profit,
+often to the detriment of end users. This phenomenon has been explored across a range
+of contexts, including in [37], [8], [43], and [21]. In this paper, we focus on a specific class
+of MEV strategies: arbitrage, particularly as it applies to a new category of decentralized
+applications, prediction markets. Several mechanisms have been proposed to mitigate the
+negative effects of MEV, as surveyed in [41]. Among these is the creation of more optimized
+MEV extraction environments, such as the Proposer-Builder Separation (PBS) paradigm.
+The goal of PBS is to reduce the influence of validators over transaction ordering and block
+content. Empirical studies, including [14] and [20], have examined the implementation and
+impact of PBS in production.
+Currently, arbitrage is generally considered a positive-sum form of MEV, as it promotes
+price alignment across decentralized protocols. Nonetheless, there is ongoing debate in the
+community about whether arbitrageurs capture a disproportionate share of value from this
+rebalancingprocess[ 19]. Akeyclarificationforthisarticleisourfocusonnon-atomicarbitrage.
+Unlike atomic arbitrage – where buy and sell operations are executed simultaneously and
+failure is impossible – non-atomic arbitrage introduces execution risk, as one leg of the
+trade may succeed while the other fails. Empirical measurements of non-atomic arbitrage in
+blockchain systems can be found in [15] and [31].
+1.2.2 LLMs
+Recent studies have demonstrated the utility of LLMs in various social and semantic annota-
+tion tasks, making them cost-effective alternatives to human annotators. Tasks such asstance
+detection[45], sentiment analysis[44], toxicity detection[44], detecting sociopolitical affiliation
+of texts [10], etc. have been put to large-scale applications by previous works and have proven
+successful even with light-weight open-source LLMs such as “Mistral-7B-Instruct-v0.2” [45],
+Llama-3.2-8B-Instruct [40], and DeepSeek [12].
+Moreover, previous literature has extensively leveraged LLMs to analyze and understand
+complex cognitive processes, including the intricate structures of reasoning and the underlying
+logical dependencies within various tasks, often through techniques such as Chain-of-Thought
+(CoT) prompting [36, 35]. These methods guide LLMs to break down complex problems into
+intermediate steps, making the reasoning process more explicit and verifiable [42].
+AFT 2025
+
+--- PAGE 4 ---
+27:4 Unravelling the Probabilistic Forest: Arbitrage in Prediction Markets
+Our LLM annotation task of detecting logical dependencies between human-generated
+markets falls in a hybrid domain between social annotation tasks and the analysis of logical
+dependencies. The perfect execution of all the mentioned tasks, including ours, relies not
+only on the power of the chosen LLM but also on the quality of a well-curated prompt,
+namely prompt engineering(see Section 2.2).
+2 Background
+We present the background necessary to understand prediction markets and how LLMs can
+aid in understanding when markets are dependent, a first step needed to assess arbitrage.
+2.1 Polymarket
+Polymarket is a prediction market platform that allows users to speculate on the outcomes
+of future events by trading shares tied to specific outcomes. Polymarket is built on top of
+the Polygon blockchain [17], providing some decentralized properties to the platform. Each
+condition poses a question about a future event, such as “Will team A defeat team B in the
+big game?”. Users can buy shares (ortokens) in‘‘YES” (the condition will become true) or
+‘‘NO” (the condition will not become true) outcomes, with share prices fluctuating based on
+market demand and reflecting the collective belief about the likelihood of each outcome.
+A market is thus a future event associated with one or more conditions. For example,
+consider the question, “Who will win the Team A vs. Team B match?”. In this case, the
+market would include three conditions: (1) Team A wins, (2) the match ends in a tie,
+or (3) Team B wins. Each condition is represented by a binary token indicating whether
+the condition is true or false. To ensure proper resolution, the set of conditions must be
+exhaustive, collectively covering all possible outcomes of the event, andindependent, where
+only one condition can resolve to true. When a market contains multiple conditions, they
+share a market ID and are labelled as NegRisk (neg risk market).1
+2.1.1 Market Creation
+The creation of markets [29] and their associated conditions is controlled by Polymarket and
+must be conducted via their Discord server or by tagging the official Polymarket account on
+Twitter (@polymarket). To suggest a new market, users provide (i) a title for the market, (ii)
+the designated resolution source,2, and (iii) evidence that there is demand for trading in this
+market. Markets are then registered on-chain, and the corresponding tokens are created for
+each condition and outcome. Tokens representing a condition follow the ERC-1155 standard
+under the Gnosis Conditional Tokens Framework [11].
+2.1.2 Buying Positions
+Positions (tokens) in Polymarket are bought/sold based on a hybrid-decentralized Central
+Limit Order Book (CLOB) system [28]. Users make a bid to buy/sell some token and submit
+these directly to the Polymarket API. Polymarket then matches bids, and those matched bids
+are executed on-chain. The on-chain element ensures that users own the tokens corresponding
+to their positions in each market, adding an element of decentralization while the matching
+is done entirely in a centralized manner.
+1 As users can hedge against specific risks by placing bets that the event won’t happen.
+2 One or more sources that should be referred to for information on the actual outcome of the event.
+
+--- PAGE 5 ---
+O. Saguillo, V. Ghafouri, L. Kiffer, and G. Suarez-Tangil 27:5
+Users place limit orders to buy or sell‘‘YES” or‘‘NO” outcome shares at specified prices.
+The simplest type of match occurs when two users submit a sell and buy bid for a token
+at the same price. In this case, the token and USDC values are directly traded, and the
+conditional token contract emits aOrderFilled event logging the trade on-chain.3 Another
+type of match is made when the prices of opposing orders sum to $1.00. For example, a
+‘‘YES” bid at $0.60 matches with a‘‘NO” bid at $0.40. Upon matching, $1.00 is converted
+into one‘‘YES” and one‘‘NO” share, each allocated to the respective buyer. On-chain,
+this is done by users locking USDC tokens4 with the Polymarket exchange contract, while
+one new conditional token is minted corresponding to one‘‘YES” token and one‘‘NO”
+token of the condition. The generation of the new token emits aPositionSplit event and
+twoOrderFilled events for each side of the buys. Similarly, two sells of opposing orders
+can sum to $1.00, resulting in the two tokens being burned and each user withdrawing the
+corresponding USDC from the exchange contract. This action emits aOrdersMerged event
+capturing the tokens being burned, and anOrderFilled event for each side of the sell.
+Lastly, a user can buy both sides of a condition by locking in 1 USDC and generating both
+one ‘‘YES” and one‘‘NO” token, which they may trade later. This emits aPositionSplit
+event. Similarly, a user may sell both positions for a condition at a cumulative price of 1
+USDC. This withdraws the USDC from the exchange and burns the two tokens representing
+it, emitting aOrdersMerged event.
+2.1.3 Market Resolution
+Polymarket utilizes UMA’s Optimistic Oracle to determine market outcomes [34]. When
+a market concludes, a resolution is proposed. If undisputed during a designated challenge
+period, it is accepted as final. However, if challenged, the resolution is escalated, here UMA
+token holders vote to determine the outcome. In the end, each condition resolves to‘‘True”
+or ‘‘False”, and a single condition in each market resolves to‘‘True”. This resolution is
+registered on-chain, and users can then claim their corresponding USDC. This system can
+lead to discrepancies between the oracle’s resolution and the actual event, especially in
+complex scenarios.5 Additionally, the concentration of voting power among large UMA token
+holders can influence resolutions, as observed in [30], and the oracle is susceptible to potential
+governance attacks as discussed in [7].
+2.2 LLMs & Prompt Engineering
+Prompt engineeringrefers to the process of crafting input queries (calledprompts) to
+guide an LLM toward producing useful or accurate outputs. Since these models do not
+inherently “understand” in the human sense, the way a question is phrased can significantly
+impact the quality of the response. Prompt engineering has emerged as a practical technique
+to control and refine LLM behavior without retraining the model. For instance, adding a
+few examples to a prompt (calledfew-shot prompting) or specifying desired formats can help
+steer the model more effectively.
+3 We use events emitted by the conditional token contract to log all buy/sells that take place on Polymarket
+when looking at on-chain data from contract0x4D97DCd97eC945f40cF65F87097ACe5EA0476045.
+4 The token representation of the US Dollar.
+5 For instance, in the 2024 FIDE World Blitz Championship market [22], both Carlsen and Nepomniachtchi
+were declared winners of different sections, but only one outcome could be selected as‘‘True” due to
+the framework’s constraints.
+AFT 2025
